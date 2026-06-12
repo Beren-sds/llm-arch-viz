@@ -198,6 +198,68 @@ describe("stop", () => {
   });
 });
 
+describe("stop()/pause() from inside onStepStart", () => {
+  it("stop() while cascading into a step: that step's effect is never applied", () => {
+    const { binding } = makeBinding();
+    const player = new TimelinePlayer(binding);
+    player.load({
+      steps: [wait(50), highlight(["x"], 100), { kind: "pulse", from: "a", to: "b", durationMs: 50 }],
+    });
+    player.onStepStart = (_step, index) => {
+      if (index === 1) player.stop();
+    };
+    player.play(); // enters step 0 (wait): no effect
+    player.update(0);
+    player.update(10_000); // one big delta crossing both step boundaries
+
+    // The entering step's highlight must NOT leak past the stop()
+    expect(binding.setHighlight).not.toHaveBeenCalledWith(["x"], true);
+    // stop()'s cleanup ran
+    expect(binding.setDim).toHaveBeenCalledWith(null);
+    // the cascade did not continue into the pulse step
+    expect(binding.pulse).not.toHaveBeenCalled();
+    expect(player.state).toBe("idle");
+    expect(player.stepIndex).toBe(0);
+  });
+
+  it("stop() at play() entry: step 0's effect is never applied", () => {
+    const { binding } = makeBinding();
+    const player = new TimelinePlayer(binding);
+    player.load({ steps: [highlight(["x"], 100)] });
+    player.onStepStart = () => player.stop();
+    player.play();
+
+    expect(binding.setHighlight).not.toHaveBeenCalled();
+    expect(binding.setDim).toHaveBeenCalledWith(null);
+    expect(player.state).toBe("idle");
+    expect(player.stepIndex).toBe(0);
+  });
+
+  it("pause() from onStepStart: the effect still applies and resume continues", () => {
+    const { binding } = makeBinding();
+    const player = new TimelinePlayer(binding);
+    player.load({ steps: [wait(50), highlight(["x"], 100), wait(50)] });
+    player.onStepStart = (_step, index) => {
+      if (index === 1) player.pause();
+    };
+    player.play();
+    player.update(0);
+    player.update(60); // crosses into step 1; callback pauses mid-entry
+
+    expect(player.state).toBe("paused");
+    expect(player.stepIndex).toBe(1);
+    // pause (unlike stop) keeps the entering step's effect
+    expect(binding.setHighlight).toHaveBeenCalledExactlyOnceWith(["x"], true);
+
+    player.onStepStart = undefined;
+    player.play(); // resume
+    player.update(1000); // reopen the clock
+    player.update(1090); // 10ms carry + 90 = 100ms: step 1 done
+    expect(player.stepIndex).toBe(2);
+    expect(binding.setHighlight).toHaveBeenLastCalledWith(["x"], false);
+  });
+});
+
 describe("loop", () => {
   it("wraps back to step 0 and keeps playing", () => {
     const { binding, player } = loadAndPlay({

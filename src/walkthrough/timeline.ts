@@ -77,7 +77,10 @@ const MIN_STEP_MS = 1;
  * clears every highlight made during the run plus any dim.
  */
 export class TimelinePlayer {
-  /** Fired once on entering a step, before its effect is applied. */
+  /**
+   * Fired once on entering a step, before its effect is applied. Calling
+   * stop() from here cancels the step's effect; pause() lets it apply.
+   */
   onStepStart?: (step: TimelineStep, index: number) => void;
   /** Fired once when the last step finishes (never while looping). */
   onComplete?: () => void;
@@ -177,8 +180,10 @@ export class TimelinePlayer {
     this.stepElapsedMs += delta;
 
     const { steps, loop } = this.spec;
-    // Cascade across boundaries; phase re-checked in case a callback
-    // (onStepStart) called stop()/pause() mid-walk.
+    // Cascade across boundaries. The loop guard stops the walk when an
+    // onStepStart callback called stop()/pause(); the entering step's own
+    // effect is guarded inside enterStep (it re-checks phase after the
+    // callback and skips the effect if stop() made the player idle).
     while (
       this.phase === "playing" &&
       this.stepElapsedMs >= this.durationOf(steps[this.index])
@@ -217,6 +222,11 @@ export class TimelinePlayer {
     if (this.spec === null) return;
     const step = this.spec.steps[index];
     this.onStepStart?.(step, index);
+    // The callback may have called stop() (which already cleaned up all
+    // visuals): applying the effect now would leave a highlight/dim that
+    // no later stop() can clear (idle guard). pause() keeps the effect —
+    // the step is still current and resume continues it.
+    if (this.phase === "idle") return;
     switch (step.kind) {
       case "highlight":
         this.binding.setHighlight(step.names, true);
