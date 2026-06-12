@@ -67,6 +67,14 @@ async function runOnce() {
     console.log(`Loading ${url}`);
     await page.goto(url, { waitUntil: "load" });
     await page.waitForSelector("canvas", { timeout: 10_000 });
+    // Async-settle handshake: a page with deferred work (e.g. troika SDF
+    // text fetches its font and typesets glyphs OFF the main thread) sets
+    // document.body.dataset.settled = "0" at startup and flips it to "1"
+    // when done (see labelsReady in main.ts). Pages that never set the
+    // flag pass through immediately, so this stays a no-op for plain runs.
+    await page.waitForFunction(() => document.body.dataset.settled !== "0", undefined, {
+      timeout: 15_000,
+    });
     await page.waitForTimeout(1500); // let the render loop draw a few frames
 
     const outDir = resolve(root, "data/screenshots");

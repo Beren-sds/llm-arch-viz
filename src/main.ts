@@ -4,6 +4,12 @@ import { OrbitControls } from "./engine/controls";
 import { TensorView } from "./engine/tensorView";
 import { Picker } from "./engine/picking";
 import { Tooltip } from "./engine/tooltip";
+import {
+  createDimBracket,
+  createTensorLabel,
+  labelsReady,
+  makeBillboard,
+} from "./engine/labels";
 import { T } from "./compute/tensor";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -45,6 +51,40 @@ const view = new TensorView("demo", [ROWS, COLS], {
 view.setValues(demo);
 shell.scene.add(view.mesh);
 
+// Labels: a billboarded title above the grid + two fixed dimension brackets.
+// Grid extents (outer cube faces): x ±(COLS-1)·PITCH/2 + CELL/2, same for y.
+const halfW = ((COLS - 1) * PITCH) / 2 + CELL / 2; // 59.875
+const halfH = ((ROWS - 1) * PITCH) / 2 + CELL / 2; // 29.875
+const title = createTensorLabel("demo (48×96)", { size: 5 });
+// anchorY is "top": position is the top-center of the text block, so the
+// glyphs hang from y=38 down to ~33 — a ~3-unit gap above the grid edge.
+title.position.set(0, 38, 0);
+shell.scene.add(title);
+const updateTitleBillboard = makeBillboard(title); // title only; brackets stay fixed
+
+const colsBracket = createDimBracket({
+  from: [-halfW, -halfH, 0],
+  to: [halfW, -halfH, 0],
+  offset: -2, // below the grid, ticks pointing down
+  label: "96 cols",
+});
+const rowsBracket = createDimBracket({
+  from: [-halfW, halfH, 0],
+  to: [-halfW, -halfH, 0],
+  offset: -2, // left of the grid, ticks pointing left; label rotated π/2
+  label: "48 rows",
+});
+shell.scene.add(colsBracket, rowsBracket);
+
+// troika typesets SDF glyphs asynchronously (default font is fetched on
+// first use): labels render as nothing for a few frames. Surface completion
+// on <body data-settled> so the screenshot harness can wait for real text
+// instead of guessing with a longer sleep.
+document.body.dataset.settled = "0";
+void labelsReady(title, colsBracket, rowsBracket).then(() => {
+  document.body.dataset.settled = "1";
+});
+
 // Frame the grid: width ~120 world units; at fov 45 a distance of 160
 // keeps the full grid in view down to square-ish aspect ratios.
 shell.camera.position.set(0, 0, 160);
@@ -64,4 +104,5 @@ picker.onPick = (result, x, y) => {
 shell.start(() => {
   controls.update();
   picker.update();
+  updateTitleBillboard(shell.camera);
 });

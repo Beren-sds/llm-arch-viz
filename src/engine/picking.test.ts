@@ -200,3 +200,125 @@ describe("Picker pointermove throttling (latest event, consumed per update)", ()
     expect(onPick).not.toHaveBeenCalled();
   });
 });
+
+describe("Picker.enabled", () => {
+  let camera: THREE.PerspectiveCamera;
+  let el: HTMLElement;
+
+  beforeEach(() => {
+    camera = makeCamera();
+    el = makeElement();
+  });
+
+  it("disabling emits one null report on the next update (like pointerleave)", () => {
+    const picker = new Picker(camera, el);
+    picker.add({ view: makeUnitView() });
+    const onPick = vi.fn<(r: PickResult | null, x: number, y: number) => void>();
+    picker.onPick = onPick;
+
+    pointerMove(el, W / 2, H / 2);
+    picker.update();
+    expect(onPick.mock.calls[0][0]).not.toBeNull();
+
+    picker.enabled = false;
+    picker.update();
+    expect(onPick).toHaveBeenCalledTimes(2);
+    expect(onPick.mock.calls[1][0]).toBeNull();
+
+    picker.update(); // exactly ONE null report, not one per frame
+    expect(onPick).toHaveBeenCalledTimes(2);
+    picker.dispose();
+  });
+
+  it("while disabled, pointer moves and pick() are suppressed", () => {
+    const picker = new Picker(camera, el);
+    picker.add({ view: makeUnitView() });
+    const onPick = vi.fn();
+    picker.onPick = onPick;
+
+    picker.enabled = false;
+    picker.update(); // consume the disable-time null report
+    onPick.mockClear();
+
+    pointerMove(el, W / 2, H / 2);
+    picker.update();
+    expect(onPick).not.toHaveBeenCalled();
+    expect(picker.pick(W / 2, H / 2)).toBeNull();
+    picker.dispose();
+  });
+
+  it("setting enabled to its current value is a no-op (no spurious null)", () => {
+    const picker = new Picker(camera, el);
+    const onPick = vi.fn();
+    picker.onPick = onPick;
+    picker.enabled = true; // already true
+    picker.update();
+    expect(onPick).not.toHaveBeenCalled();
+    picker.dispose();
+  });
+
+  it("re-enabling restores picking on the next pointer move", () => {
+    const picker = new Picker(camera, el);
+    picker.add({ view: makeUnitView() });
+    const onPick = vi.fn<(r: PickResult | null, x: number, y: number) => void>();
+    picker.onPick = onPick;
+
+    picker.enabled = false;
+    picker.update();
+    picker.enabled = true;
+    expect(picker.enabled).toBe(true);
+
+    pointerMove(el, W / 2, H / 2);
+    picker.update();
+    const last = onPick.mock.calls.at(-1)!;
+    expect(last[0]).not.toBeNull();
+    expect(last[0]!.value).toBe(42);
+    picker.dispose();
+  });
+});
+
+describe("Picker.requestRepick", () => {
+  let camera: THREE.PerspectiveCamera;
+  let el: HTMLElement;
+
+  beforeEach(() => {
+    camera = makeCamera();
+    el = makeElement();
+  });
+
+  it("re-resolves the stationary cursor after values change underneath it", () => {
+    const view = makeUnitView();
+    const picker = new Picker(camera, el);
+    picker.add({ view });
+    const onPick = vi.fn<(r: PickResult | null, x: number, y: number) => void>();
+    picker.onPick = onPick;
+
+    pointerMove(el, W / 2, H / 2);
+    picker.update();
+    expect(onPick).toHaveBeenCalledTimes(1);
+    expect(onPick.mock.calls[0][0]!.value).toBe(42);
+
+    // Cursor does not move; the tensor's value changes under it.
+    view.setValues(T.from([7], [1]));
+    picker.update(); // not dirty: still throttled, no re-pick
+    expect(onPick).toHaveBeenCalledTimes(1);
+
+    picker.requestRepick();
+    picker.update();
+    expect(onPick).toHaveBeenCalledTimes(2);
+    expect(onPick.mock.calls[1][0]!.value).toBe(7);
+    picker.dispose();
+  });
+
+  it("is a no-op when no pointer position is held (no spurious null report)", () => {
+    const picker = new Picker(camera, el);
+    picker.add({ view: makeUnitView() });
+    const onPick = vi.fn();
+    picker.onPick = onPick;
+
+    picker.requestRepick(); // nothing under a cursor that isn't there
+    picker.update();
+    expect(onPick).not.toHaveBeenCalled();
+    picker.dispose();
+  });
+});

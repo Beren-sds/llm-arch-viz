@@ -59,8 +59,10 @@ export class Picker {
   private latest: { x: number; y: number } | null = null;
   /** True when a pointer event arrived since the last update(). */
   private dirty = false;
+  private _enabled = true;
 
   private readonly onPointerMove = (e: PointerEvent): void => {
+    if (!this._enabled) return;
     this.latest = { x: e.clientX, y: e.clientY };
     this.dirty = true;
   };
@@ -77,6 +79,36 @@ export class Picker {
     domElement.addEventListener("pointerleave", this.onPointerLeave);
   }
 
+  get enabled(): boolean {
+    return this._enabled;
+  }
+
+  /**
+   * Gate the whole pick path (e.g. while a camera tour animates). Disabling
+   * drops the held pointer position and queues ONE null report through the
+   * dirty path — same as pointerleave — so the tooltip hides on the next
+   * update(). While disabled, pointer events are ignored and pick() returns
+   * null. Re-enabling resumes on the next pointer move.
+   */
+  set enabled(v: boolean) {
+    if (v === this._enabled) return;
+    this._enabled = v;
+    if (!v) {
+      this.latest = null;
+      this.dirty = true;
+    }
+  }
+
+  /**
+   * Re-resolve the held pointer position on the next update() even though
+   * the cursor has not moved — call after tensor VALUES change (the cell
+   * under a stationary cursor now reads differently). No-op when no
+   * position is held (after pointerleave / while disabled).
+   */
+  requestRepick(): void {
+    if (this.latest !== null) this.dirty = true;
+  }
+
   add(target: PickTarget): void {
     this.targets.set(target.view.mesh, target);
   }
@@ -90,6 +122,7 @@ export class Picker {
    * Returns the nearest instance hit, or null.
    */
   pick(clientX: number, clientY: number): PickResult | null {
+    if (!this._enabled) return null;
     const rect = this.domElement.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return null;
     this.ndc.set(
@@ -97,6 +130,12 @@ export class Picker {
       -((clientY - rect.top) / rect.height) * 2 + 1,
     );
     this.raycaster.setFromCamera(this.ndc, this.camera);
+    // NOTE: Raycaster vs InstancedMesh first tests a LAZILY CACHED bounding
+    // sphere. TensorView writes instance matrices once in its constructor
+    // (before the first pick computes the sphere), so this is safe today —
+    // but if instance matrices are ever rewritten after a pick (animated
+    // layouts), call mesh.computeBoundingSphere() afterwards or rays will
+    // be tested against the stale sphere and silently miss.
     const hits = this.raycaster.intersectObjects([...this.targets.keys()], false);
     for (const hit of hits) {
       if (hit.instanceId === undefined) continue;
