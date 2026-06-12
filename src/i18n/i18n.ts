@@ -41,7 +41,9 @@ export function validateDicts(dicts: Dicts): string[] {
   }
   const missing: string[] = [];
   for (const key of union) {
-    if (LOCALES.some((locale) => dicts[locale][key] === undefined)) {
+    // Object.hasOwn: keys like 'toString' exist on a plain object's
+    // prototype, so an index lookup would wrongly count them as present.
+    if (LOCALES.some((locale) => !Object.hasOwn(dicts[locale], key))) {
       missing.push(key);
     }
   }
@@ -85,10 +87,11 @@ export class I18n {
 
   /** Translate `key`: current locale → EN → the key itself (+console.error). */
   t(key: string): string {
-    const local = this.dicts[this.currentLocale][key];
-    if (local !== undefined) return local;
-    const en = this.dicts.en[key];
-    if (en !== undefined) return en;
+    // Object.hasOwn guards against prototype collisions: 'toString' etc.
+    // exist on every plain object but are not translations.
+    const dict = this.dicts[this.currentLocale];
+    if (Object.hasOwn(dict, key)) return dict[key];
+    if (Object.hasOwn(this.dicts.en, key)) return this.dicts.en[key];
     console.error(`i18n: missing key "${key}" in every locale`);
     return key;
   }
@@ -99,6 +102,6 @@ export class I18n {
    * dictionaries.
    */
   missingLocales(key: string): Locale[] {
-    return LOCALES.filter((locale) => this.dicts[locale][key] === undefined);
+    return LOCALES.filter((locale) => !Object.hasOwn(this.dicts[locale], key));
   }
 }

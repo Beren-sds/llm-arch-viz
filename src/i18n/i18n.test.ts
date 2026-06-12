@@ -43,6 +43,16 @@ describe("I18n.t", () => {
     expect(err).toHaveBeenCalledTimes(1);
     expect(String(err.mock.calls[0])).toContain("no.such.key");
   });
+
+  it("does not resolve Object.prototype keys as translations", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const i = new I18n(makeDicts());
+    // 'toString'/'constructor' exist on the prototype of a plain object
+    // literal; only own keys are translations.
+    expect(i.t("toString")).toBe("toString");
+    expect(i.t("constructor")).toBe("constructor");
+    expect(err).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("I18n locale + persistence", () => {
@@ -107,6 +117,14 @@ describe("I18n.onChange", () => {
   });
 });
 
+describe("I18n.missingLocales", () => {
+  it("treats Object.prototype keys as missing from every locale", () => {
+    const i = new I18n(makeDicts());
+    expect(i.missingLocales("toString")).toEqual(["en", "zh"]);
+    expect(i.missingLocales("ui.play")).toEqual([]);
+  });
+});
+
 describe("validateDicts", () => {
   it("returns [] when both locales have the same keys", () => {
     expect(
@@ -126,6 +144,12 @@ describe("validateDicts", () => {
     expect(
       validateDicts({ en: { z: "1", a: "2" }, zh: { a: "一", m: "中" } }),
     ).toEqual(["m", "z"]);
+  });
+
+  it("is not fooled by Object.prototype keys (own-key check, not lookup)", () => {
+    // 'toString' exists on zh's prototype; a plain `zh['toString']` lookup
+    // would wrongly count it as translated.
+    expect(validateDicts({ en: { toString: "To string" }, zh: {} })).toEqual(["toString"]);
   });
 });
 

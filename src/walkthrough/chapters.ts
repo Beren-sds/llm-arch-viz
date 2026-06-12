@@ -10,6 +10,7 @@
 
 import type { CameraKeyframe } from "../engine/cameraTour";
 import type { I18n } from "../i18n/i18n";
+import type { TimelineSpec } from "./timeline";
 
 export interface Chapter {
   /** Stable slug used in deep links ('#/mamba/ssm-scan'). */
@@ -20,8 +21,8 @@ export interface Chapter {
   highlights: string[];
   /** i18n key for the narration text; must exist in EVERY locale. */
   narrationKey: string;
-  /** Per-chapter compute timeline — typed placeholder until Task 18. */
-  timeline?: unknown;
+  /** Per-chapter compute timeline, played by a TimelinePlayer on entry. */
+  timeline?: TimelineSpec;
 }
 
 export class ChapterRegistry {

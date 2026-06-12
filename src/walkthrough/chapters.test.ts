@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { I18n, type Locale } from "../i18n/i18n";
 import { type Chapter, ChapterRegistry, parseHash, toHash } from "./chapters";
+import type { TimelineSpec } from "./timeline";
 
 function makeI18n(
   en: Record<string, string> = {
@@ -101,6 +102,18 @@ describe("ChapterRegistry access", () => {
 
   it("exposes the scene name", () => {
     expect(reg.scene).toBe("mamba");
+  });
+
+  it("carries an optional typed TimelineSpec per chapter", () => {
+    const timeline: TimelineSpec = {
+      steps: [{ kind: "stepToken", token: 0, durationMs: 500 }],
+      loop: true,
+    };
+    const chapters = makeChapters();
+    chapters[0] = { ...chapters[0], timeline };
+    const withTl = new ChapterRegistry("mamba", chapters, makeI18n());
+    expect(withTl.get(0).timeline).toEqual(timeline);
+    expect(withTl.get(1).timeline).toBeUndefined();
   });
 });
 
