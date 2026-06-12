@@ -22,10 +22,10 @@
 
 **GPT toy:** `n_layer=2, d_model=48, n_head=3 (head_dim=16), mlp_ratio=4, vocab=16`, learned positional embedding, untied head.
 
-**Weight export format:** `public/models/<arch>/manifest.json` (arch, dims, tensor table: name/shape/offset/length) + `weights.bin` (little-endian float32, concatenated in manifest order) + `goldens.json` (2 fixed eval inputs; for each, every named activation with shape + flattened values).
+**Weight export format:** `public/models/<arch>/manifest.json` (arch, dims, tensor table: name/shape/offset/length) + `weights.bin` (little-endian float32, concatenated in manifest order) + `goldens.json` (2 fixed eval inputs; for each, every named activation with shape + flattened values). GPT's recorded `attn.scores` contain `-inf` (post-mask): strict JSON cannot hold Infinity, so export encodes non-finite floats as the strings `"Infinity"`/`"-Infinity"`/`"NaN"` and the TS golden comparator decodes them and treats sign-matched infinities as equal.
 
-**Activation naming convention** (shared TS/Python, this exact grammar):
-`embed.out`, `layer{i}.norm.out`, `layer{i}.<module>.<port>`, `final_norm.out`, `head.logits`. Mamba modules: `in_proj`, `conv`, `x_proj`, `dt`, `ssm` (ports `h.t{t}` for per-token hidden state, `out`), `gate`, `out_proj`. GPT modules: `attn` (ports `q,k,v,scores,weights,out`), `mlp` (ports `fc,act,proj`).
+**Activation naming convention** (shared TS/Python; the Python impls in `training/llmviz_train/{mamba,gpt}.py` are the source of truth):
+`embed.out`, `layer{i}.<module>.<port>`, `final_norm.out`, `head.logits`. Mamba modules: `norm`, `in_proj`, `conv`, `x_proj`, `delta` (post-softplus Δ), `ssm` (ports `h.t{t}` for per-token hidden state, `out`), `gate`, `out_proj`. GPT modules: `ln1`, `ln2`, `attn` (ports `q,k,v,scores,weights,out`), `mlp` (ports `fc,act,proj`).
 
 ---
 
