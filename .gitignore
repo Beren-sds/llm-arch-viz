@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local artifacts (screenshots from scripts/screenshot.mjs, etc.)
+/data/
+
 # Python (training/)
 training/.venv/
 # best.pt + config_snapshot.json + metrics.jsonl of the runs referenced by
