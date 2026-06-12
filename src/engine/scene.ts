@@ -79,12 +79,16 @@ export function createSceneShell(container: HTMLElement): SceneShell {
   renderer.setSize(container.clientWidth, container.clientHeight);
   container.appendChild(renderer.domElement);
 
+  // ResizeObserver instead of window `resize`: the container can change
+  // size without the window doing so (panel toggles, scrollbar appearing,
+  // layout shifts), and per-element observation is what we actually mean.
   const onResize = (): void => {
     camera.aspect = aspectOf(container);
     camera.updateProjectionMatrix();
     renderer.setSize(container.clientWidth, container.clientHeight);
   };
-  window.addEventListener("resize", onResize);
+  const resizeObserver = new ResizeObserver(onResize);
+  resizeObserver.observe(container);
 
   // Dev-only FPS readout: a fixed div updated once per second. No deps.
   let statsEl: HTMLDivElement | null = null;
@@ -110,8 +114,12 @@ export function createSceneShell(container: HTMLElement): SceneShell {
 
   const dispose = (): void => {
     renderer.setAnimationLoop(null);
-    window.removeEventListener("resize", onResize);
+    resizeObserver.disconnect();
     renderer.dispose();
+    // Browsers cap live WebGL contexts per page (~8-16); Task 22 recreates
+    // shells per navigation, so explicitly lose the context instead of
+    // waiting for GC to reclaim the detached canvas.
+    renderer.forceContextLoss();
     renderer.domElement.remove();
     statsEl?.remove();
   };
@@ -131,7 +139,11 @@ function assertWebGL2(container: HTMLElement): void {
   if (typeof WebGL2RenderingContext !== "undefined") {
     try {
       const probe = document.createElement("canvas");
-      ok = probe.getContext("webgl2") !== null;
+      const ctx = probe.getContext("webgl2");
+      ok = ctx !== null;
+      // Release the probe context immediately — live contexts are capped
+      // per page and this one exists only to answer "is WebGL2 there?".
+      ctx?.getExtension("WEBGL_lose_context")?.loseContext();
     } catch {
       ok = false;
     }
