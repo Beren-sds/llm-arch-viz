@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import * as THREE from "three";
+import { describe, expect, it, vi } from "vitest";
 import { T } from "../compute/tensor";
 import { TensorView, unflattenIndex, type TensorLayout } from "./tensorView";
 
@@ -54,6 +55,26 @@ describe("TensorView construction", () => {
   it("honours an explicit slabGap", () => {
     const view = new TensorView("a", [3, 1, 1], { ...LAYOUT, slabGap: 10 });
     expect(posOf(view, 2)).toEqual([2, 3, 4 - 20]);
+  });
+
+  it("throws on non-positive cellSize or negative gap", () => {
+    expect(() => new TensorView("v", [2], { cellSize: 0, gap: 0.25, origin: [0, 0, 0] })).toThrow(
+      /cellSize/,
+    );
+    expect(() => new TensorView("v", [2], { cellSize: -1, gap: 0.25, origin: [0, 0, 0] })).toThrow(
+      /cellSize/,
+    );
+    expect(() => new TensorView("v", [2], { cellSize: 1, gap: -0.1, origin: [0, 0, 0] })).toThrow(
+      /gap/,
+    );
+    expect(() => new TensorView("v", [2], { cellSize: NaN, gap: 0, origin: [0, 0, 0] })).toThrow(
+      /cellSize/,
+    );
+  });
+
+  it("marks the instance color attribute as dynamic draw usage", () => {
+    const view = new TensorView("v", [2], LAYOUT);
+    expect(view.mesh.instanceColor!.usage).toBe(THREE.DynamicDrawUsage);
   });
 
   it("uses cellSize-sized box geometry", () => {
@@ -161,5 +182,17 @@ describe("highlight/dim uniforms + dispose", () => {
   it("dispose releases geometry and material without throwing", () => {
     const view = new TensorView("v", [2, 2], LAYOUT);
     expect(() => view.dispose()).not.toThrow();
+  });
+
+  it("dispose disposes the mesh itself (releases instance GL buffers)", () => {
+    const view = new TensorView("v", [2, 2], LAYOUT);
+    const meshDispose = vi.spyOn(view.mesh, "dispose");
+    let disposeEventFired = false;
+    view.mesh.addEventListener("dispose", () => {
+      disposeEventFired = true;
+    });
+    view.dispose();
+    expect(meshDispose).toHaveBeenCalledTimes(1);
+    expect(disposeEventFired).toBe(true);
   });
 });

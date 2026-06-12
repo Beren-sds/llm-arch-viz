@@ -59,6 +59,7 @@ void main() {
 
 // Fragment: flat color, dimmed to 35% when uDim=1, additive pulse when
 // uHighlight=1. The engine animates these floats between 0 and 1 later.
+// Raw colormap output intentionally skips colorspace_fragment/tonemapping — flat UI colors by design.
 const FRAGMENT = /* glsl */ `
 uniform float uDim;
 uniform float uHighlight;
@@ -75,14 +76,20 @@ export class TensorView {
   readonly layout: TensorLayout;
   readonly mesh: THREE.InstancedMesh;
   readonly material: THREE.ShaderMaterial;
-  /** Copy of the most recent values (for tooltip lookup); null before setValues. */
-  lastValues: Float32Array | null = null;
+  /** Copy of the most recent values (for tooltip lookup); zero-filled before setValues. */
+  readonly lastValues: Float32Array;
   /** Color scale used by the most recent setValues. */
   scale = 1;
 
   constructor(name: string, shape: readonly number[], layout: TensorLayout) {
     if (shape.length < 1 || shape.length > 3 || shape.some((d) => !Number.isInteger(d) || d < 1)) {
       throw new Error(`TensorView ${name}: shape [${shape.join(", ")}] must be 1-3 positive dims`);
+    }
+    if (!(layout.cellSize > 0) || !(layout.gap >= 0)) {
+      throw new Error(
+        `TensorView ${name}: cellSize must be > 0 and gap >= 0 ` +
+          `(got cellSize=${layout.cellSize}, gap=${layout.gap})`,
+      );
     }
     this.name = name;
     this.shape = shape.slice();
@@ -125,7 +132,12 @@ export class TensorView {
       colors[3 * k + 1] = zero.g;
       colors[3 * k + 2] = zero.b;
     }
-    this.mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
+    // Rewritten every animation step via setValues -> dynamic draw usage.
+    this.mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3).setUsage(
+      THREE.DynamicDrawUsage,
+    );
+
+    this.lastValues = new Float32Array(count);
   }
 
   /**
@@ -150,7 +162,7 @@ export class TensorView {
       out[3 * k + 2] = rgb.b;
     }
     attr.needsUpdate = true;
-    this.lastValues = new Float32Array(t.data);
+    this.lastValues.set(t.data);
     this.scale = s;
   }
 
@@ -179,6 +191,9 @@ export class TensorView {
   }
 
   dispose(): void {
+    // mesh.dispose() fires the 'dispose' event that releases the
+    // instanceMatrix/instanceColor GL buffers; geometry/material need their own.
+    this.mesh.dispose();
     this.mesh.geometry.dispose();
     this.material.dispose();
   }
