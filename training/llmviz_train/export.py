@@ -1,16 +1,22 @@
 """Export trained weights + golden activations for the TS site.
 
-Artifacts per arch, written to ``<repo>/public/models/<arch>/`` by the
-``training/export.py`` CLI wrapper (this module holds all the logic):
+Artifacts per arch, written by the ``training/export.py`` CLI wrapper
+(this module holds all the logic). Site assets go to
+``<repo>/public/models/<arch>/`` (shipped in the bundle); goldens go to
+``<repo>/goldens/<arch>/`` (test fixtures only, read from fs by vitest —
+kept OUT of public/ so ~4MB of JSON never ships with the site):
 
-  manifest.json   ``arch``, ``dims`` (arch config + vocab_size + derived
+  public/models/<arch>/manifest.json
+                  ``arch``, ``dims`` (arch config + vocab_size + derived
                   dims), ``checkpoint`` provenance, and the ``tensors``
                   table. Offsets and lengths are in FLOAT-COUNT units
                   (float32 elements, NOT bytes); the manifest documents
                   this itself via ``"offset_unit": "float32"``.
-  weights.bin     every state_dict tensor as little-endian float32,
+  public/models/<arch>/weights.bin
+                  every state_dict tensor as little-endian float32,
                   concatenated in manifest order (sorted by tensor name).
-  goldens.json    2 fixed eval inputs plus the full recorded activation
+  goldens/<arch>/goldens.json
+                  2 fixed eval inputs plus the full recorded activation
                   dict per input. Non-finite floats (GPT attn.scores hold
                   -inf from the causal mask) are encoded as the strings
                   "Infinity" / "-Infinity" / "NaN" because strict JSON
@@ -40,7 +46,8 @@ from llmviz_train.task import TASK, make_batch
 from llmviz_train.train import build_model
 
 TRAINING_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_OUT_ROOT = TRAINING_DIR.parent / "public" / "models"
+DEFAULT_MODELS_ROOT = TRAINING_DIR.parent / "public" / "models"
+DEFAULT_GOLDENS_ROOT = TRAINING_DIR.parent / "goldens"
 
 GOLDEN_SEED_OFFSET = 3  # train=+1, val=+2, export goldens=+3
 N_GOLDEN_INPUTS = 2
@@ -192,12 +199,20 @@ def select_golden_inputs(
 # --- top-level export ----------------------------------------------------------
 
 
-def export_arch(arch: str, out_dir: Path | str, training_dir: Path | str = TRAINING_DIR) -> dict:
-    """Export manifest.json + weights.bin + goldens.json for ``arch``.
+def export_arch(
+    arch: str,
+    models_dir: Path | str | None = None,
+    goldens_dir: Path | str | None = None,
+    training_dir: Path | str = TRAINING_DIR,
+) -> dict:
+    """Export manifest.json + weights.bin (``models_dir``, defaults to
+    ``<repo>/public/models/<arch>``) and goldens.json (``goldens_dir``,
+    defaults to ``<repo>/goldens/<arch>``) for ``arch``.
 
     Returns a summary dict (paths, sizes, tensor/float counts, skip count).
     """
-    out_dir = Path(out_dir)
+    models_dir = Path(models_dir) if models_dir is not None else DEFAULT_MODELS_ROOT / arch
+    goldens_dir = Path(goldens_dir) if goldens_dir is not None else DEFAULT_GOLDENS_ROOT / arch
     ckpt = load_checkpoint(arch, training_dir)
     cfg = ckpt["config"]
     state_dict = ckpt["model_state_dict"]
@@ -223,22 +238,24 @@ def export_arch(arch: str, out_dir: Path | str, training_dir: Path | str = TRAIN
     }
     goldens = {"inputs": inputs, "activations": activations}
 
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    (out_dir / "weights.bin").write_bytes(blob)
+    models_dir.mkdir(parents=True, exist_ok=True)
+    goldens_dir.mkdir(parents=True, exist_ok=True)
+    (models_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (models_dir / "weights.bin").write_bytes(blob)
     # allow_nan=False guarantees no bare Infinity/NaN literal ever reaches disk;
     # full-precision default float repr, no rounding.
-    (out_dir / "goldens.json").write_text(json.dumps(goldens, allow_nan=False) + "\n")
+    (goldens_dir / "goldens.json").write_text(json.dumps(goldens, allow_nan=False) + "\n")
 
     return {
         "arch": arch,
-        "out_dir": str(out_dir),
+        "models_dir": str(models_dir),
+        "goldens_dir": str(goldens_dir),
         "n_tensors": len(table),
         "n_floats": sum(t["length"] for t in table),
         "golden_candidates_skipped": skipped,
         "bytes": {
-            "manifest.json": (out_dir / "manifest.json").stat().st_size,
+            "manifest.json": (models_dir / "manifest.json").stat().st_size,
             "weights.bin": len(blob),
-            "goldens.json": (out_dir / "goldens.json").stat().st_size,
+            "goldens.json": (goldens_dir / "goldens.json").stat().st_size,
         },
     }

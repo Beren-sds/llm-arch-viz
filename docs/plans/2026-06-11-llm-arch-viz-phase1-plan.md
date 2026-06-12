@@ -127,11 +127,11 @@ Same step pattern as Task 4: shape, causality (causal mask), activation recordin
 
 ### Task 7: Export weights + goldens
 
-**Files:** Create `training/export.py`, `training/tests/test_export.py`, output to `public/models/{mamba,gpt}/`.
+**Files:** Create `training/export.py`, `training/tests/test_export.py`, output manifest.json + weights.bin to `public/models/{mamba,gpt}/` (site assets) and goldens.json to `goldens/{mamba,gpt}/` (test fixtures only — kept out of public/ so they never ship in the site bundle).
 
 **Step 1 (failing test):** round-trip test — export to tmpdir, reload `weights.bin` via manifest offsets with numpy, compare every tensor to the checkpoint state_dict exactly; goldens test — `goldens.json` has 2 inputs, each with `head.logits` whose argmax over answer positions equals the true answers.
 **Step 2:** Implement: manifest tensor order = deterministic (sorted by name); float32 little-endian; 2 fixed eval inputs generated from config seed; record all named activations (batch item 0) into goldens.
-**Step 3:** Run export for both archs; tests pass. Files land in `public/models/`.
+**Step 3:** Run export for both archs; tests pass. Manifest + weights land in `public/models/`; goldens land in `goldens/`.
 **Step 4:** Commit `feat(training): weight+golden export to public/models` (the .bin/.json artifacts ARE committed — they're site assets, few hundred KB).
 
 ### Task 8: TS tensor runtime ops (TDD)
@@ -160,7 +160,7 @@ Test against a tiny fixture manifest+bin built in-test (Uint8Array). Loader: fet
 
 **Files:** Create `src/compute/mamba.ts`, `src/compute/mamba.golden.test.ts`.
 
-**Step 1 (failing test):** load `public/models/mamba/{manifest.json,weights.bin,goldens.json}` from disk (vitest node env, `fs`), run `mambaForward(weights, input, recorder)`, assert **every** golden activation matches: `maxAbsDiff < 1e-4`, and report the worst offender name in the assertion message.
+**Step 1 (failing test):** load `public/models/mamba/{manifest.json,weights.bin}` and `goldens/mamba/goldens.json` from disk (vitest node env, `fs`), run `mambaForward(weights, input, recorder)`, assert **every** golden activation matches: `maxAbsDiff < 1e-4`, and report the worst offender name in the assertion message.
 **Step 2:** FAIL → **Step 3:** implement forward emitting activations through a `Recorder` (`record(name, tensor)`), mirroring Task 4's reference exactly. **Step 4:** PASS — this unblocks all Mamba scene work. **Step 5:** Commit `feat(compute): TS Mamba forward matches PyTorch goldens <1e-4`.
 
 ### Task 11: TS GPT forward pass — golden gate

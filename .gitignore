@@ -14,6 +14,8 @@ dist-ssr
 
 # Python (training/)
 training/.venv/
+# best.pt + config_snapshot.json + metrics.jsonl of the runs referenced by
+# training/runs.json are force-added (git add -f) for checkpoint provenance.
 training/outputs/
 __pycache__/
 *.pyc

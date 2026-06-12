@@ -35,17 +35,21 @@ ANSWER_HI = TASK.context_len + TASK.n_data  # 20
 
 @pytest.fixture(scope="module")
 def exported(tmp_path_factory):
-    """Run the real export once per arch into a tmpdir; return its root."""
-    root = tmp_path_factory.mktemp("models")
-    summaries = {arch: export_arch(arch, root / arch) for arch in ARCHS}
-    return root, summaries
+    """Run the real export once per arch into tmpdirs (separate models +
+    goldens roots, mirroring public/models/ vs goldens/); return both."""
+    models_root = tmp_path_factory.mktemp("models")
+    goldens_root = tmp_path_factory.mktemp("goldens")
+    summaries = {
+        arch: export_arch(arch, models_root / arch, goldens_root / arch) for arch in ARCHS
+    }
+    return (models_root, goldens_root), summaries
 
 
-def _load(root, arch):
-    d = root / arch
-    manifest = json.loads((d / "manifest.json").read_text())
-    goldens = json.loads((d / "goldens.json").read_text())
-    blob = np.fromfile(d / "weights.bin", dtype="<f4")
+def _load(roots, arch):
+    models_root, goldens_root = roots
+    manifest = json.loads((models_root / arch / "manifest.json").read_text())
+    goldens = json.loads((goldens_root / arch / "goldens.json").read_text())
+    blob = np.fromfile(models_root / arch / "weights.bin", dtype="<f4")
     return manifest, goldens, blob
 
 
@@ -124,8 +128,8 @@ def test_golden_inputs_predicted_correctly(exported, arch):
 
 
 def test_gpt_nonfinite_encoded_as_strings(exported):
-    root, _ = exported
-    text = (root / "gpt" / "goldens.json").read_text()
+    (_, goldens_root), _ = exported
+    text = (goldens_root / "gpt" / "goldens.json").read_text()
 
     def _reject_constant(s):
         raise AssertionError(f"bare non-finite JSON literal {s!r} in goldens.json")
