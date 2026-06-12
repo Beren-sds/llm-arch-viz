@@ -27,6 +27,16 @@ import torch.nn.functional as F
 from torch import nn
 
 
+def _snapshot(tensor: torch.Tensor) -> torch.Tensor:
+    """Detached float32 CPU copy of ``tensor`` for activation recording.
+
+    The trailing clone matters: on a CPU float32 model, ``.to`` is a no-op
+    that would alias live forward-pass storage, so later in-place ops could
+    silently corrupt the snapshot.
+    """
+    return tensor.detach().to("cpu", torch.float32).clone()
+
+
 class RMSNorm(nn.Module):
     """x * rsqrt(mean(x^2, dim=-1) + eps) * weight (no bias)."""
 
@@ -89,7 +99,7 @@ class MambaBlock(nn.Module):
 
         def rec(name: str, tensor: torch.Tensor) -> None:
             if record is not None:
-                record[prefix + name] = tensor.detach().to("cpu", torch.float32)
+                record[prefix + name] = _snapshot(tensor)
 
         xz = self.in_proj(x)  # (B, T, 2*d_inner)
         rec("in_proj.out", xz[0])
@@ -107,7 +117,7 @@ class MambaBlock(nn.Module):
             dbc, [self.dt_rank, self.d_state, self.d_state], dim=-1
         )
         delta = F.softplus(self.dt_proj(dt))  # (B, T, d_inner)
-        rec("dt.out", delta[0])
+        rec("delta.out", delta[0])
 
         A = -torch.exp(self.A_log)  # (d_inner, d_state)
 
@@ -166,7 +176,7 @@ class Mamba(nn.Module):
 
         def rec(name: str, tensor: torch.Tensor) -> None:
             if acts is not None:
-                acts[name] = tensor.detach().to("cpu", torch.float32)
+                acts[name] = _snapshot(tensor)
 
         x = self.embedding(tokens)
         rec("embed.out", x[0])

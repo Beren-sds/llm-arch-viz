@@ -1,35 +1,36 @@
-"""Tests for the minimal Mamba reference implementation.
+"""Tests for the minimal GPT reference implementation.
 
 The model is the golden-activation source for the TypeScript port, so the
 tests pin down the externally observable contract:
   - logits shape (B, T, vocab)
   - causality (token t cannot influence logits at positions < t)
   - the exact set of recorded activation names and shapes
+  - recorded tensors are detached, cloned, float32, CPU
   - determinism under seed_all
+  - finite gradients through a masked-CE training step
 """
 
 import torch
 
 from llmviz_train.config import load_config
-from llmviz_train.mamba import Mamba
+from llmviz_train.gpt import GPT
 from llmviz_train.seed import seed_all
 from llmviz_train.task import make_batch
 
 VOCAB = 16
 T = 21
-CFG = load_config()["mamba"]
+CFG = load_config()["gpt"]
 
 D_MODEL = CFG["d_model"]  # 48
-D_STATE = CFG["d_state"]  # 8
-D_CONV = CFG["d_conv"]  # 4
-D_INNER = CFG["expand"] * CFG["d_model"]  # 96
-DT_RANK = -(-D_MODEL // 16)  # ceil(d_model / 16) = 3
+N_HEAD = CFG["n_head"]  # 3
+HEAD_DIM = D_MODEL // N_HEAD  # 16
+D_MLP = CFG["mlp_ratio"] * D_MODEL  # 192
 N_LAYER = CFG["n_layer"]  # 2
 
 
-def make_model(seed: int = 0) -> Mamba:
+def make_model(seed: int = 0) -> GPT:
     seed_all(seed)
-    return Mamba(CFG, vocab_size=VOCAB)
+    return GPT(CFG, vocab_size=VOCAB)
 
 
 def make_tokens(batch: int, seed: int = 0) -> torch.Tensor:
@@ -45,8 +46,9 @@ def test_logits_shape():
 
 
 def test_causality():
-    """Changing the token at position 10 must not change logits before 10,
-    and must change logits at position 10 (checked over several seeds)."""
+    """Changing the token at position 10 must not change logits before 10
+    (bit-exactly: the causal mask zeroes future contributions), and must
+    change logits at position 10 (checked over several seeds)."""
     model = make_model()
     for seed in range(3):
         a = make_tokens(2, seed=seed)
@@ -56,7 +58,7 @@ def test_causality():
         with torch.no_grad():
             la = model(a)
             lb = model(b)
-        assert torch.allclose(la[:, :10], lb[:, :10], atol=1e-6)
+        assert torch.equal(la[:, :10], lb[:, :10])
         assert not torch.allclose(la[:, 10], lb[:, 10], atol=1e-6)
 
 
@@ -67,16 +69,17 @@ def expected_recording_keys() -> dict[str, tuple[int, ...]]:
         "head.logits": (T, VOCAB),
     }
     for i in range(N_LAYER):
-        keys[f"layer{i}.norm.out"] = (T, D_MODEL)
-        keys[f"layer{i}.in_proj.out"] = (T, 2 * D_INNER)
-        keys[f"layer{i}.conv.out"] = (T, D_INNER)
-        keys[f"layer{i}.x_proj.out"] = (T, DT_RANK + 2 * D_STATE)
-        keys[f"layer{i}.delta.out"] = (T, D_INNER)
-        for t in range(T):
-            keys[f"layer{i}.ssm.h.t{t}"] = (D_INNER, D_STATE)
-        keys[f"layer{i}.ssm.out"] = (T, D_INNER)
-        keys[f"layer{i}.gate.out"] = (T, D_INNER)
-        keys[f"layer{i}.out_proj.out"] = (T, D_MODEL)
+        keys[f"layer{i}.ln1.out"] = (T, D_MODEL)
+        keys[f"layer{i}.attn.q"] = (N_HEAD, T, HEAD_DIM)
+        keys[f"layer{i}.attn.k"] = (N_HEAD, T, HEAD_DIM)
+        keys[f"layer{i}.attn.v"] = (N_HEAD, T, HEAD_DIM)
+        keys[f"layer{i}.attn.scores"] = (N_HEAD, T, T)
+        keys[f"layer{i}.attn.weights"] = (N_HEAD, T, T)
+        keys[f"layer{i}.attn.out"] = (T, D_MODEL)
+        keys[f"layer{i}.ln2.out"] = (T, D_MODEL)
+        keys[f"layer{i}.mlp.fc"] = (T, D_MLP)
+        keys[f"layer{i}.mlp.act"] = (T, D_MLP)
+        keys[f"layer{i}.mlp.proj"] = (T, D_MODEL)
     return keys
 
 
@@ -94,6 +97,23 @@ def test_recording_complete_key_set_and_shapes():
         assert tensor.dtype == torch.float32, name
         assert tensor.device.type == "cpu", name
         assert not tensor.requires_grad, name
+
+
+def test_recording_masked_scores_and_normalized_weights():
+    """scores are post-mask (upper triangle -inf), weights post-softmax
+    (rows sum to 1, upper triangle exactly 0)."""
+    model = make_model()
+    tokens = make_tokens(2)
+    with torch.no_grad():
+        _, acts = model(tokens, record=True)
+    upper = torch.triu(torch.ones(T, T, dtype=torch.bool), diagonal=1)
+    for i in range(N_LAYER):
+        scores = acts[f"layer{i}.attn.scores"]
+        weights = acts[f"layer{i}.attn.weights"]
+        assert torch.isinf(scores[:, upper]).all() and (scores[:, upper] < 0).all()
+        assert torch.isfinite(scores[:, ~upper]).all()
+        assert (weights[:, upper] == 0).all()
+        assert torch.allclose(weights.sum(dim=-1), torch.ones(N_HEAD, T), atol=1e-6)
 
 
 def test_recording_matches_unrecorded_logits():
