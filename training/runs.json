@@ -1,0 +1,16 @@
+{
+  "gpt": {
+    "best_val_exact": 1.0,
+    "finished_utc": "2026-06-12T06:10:43Z",
+    "git_short": "8c7c291",
+    "run_dir": "outputs/gpt/20260612T061022Z-8c7c291",
+    "step": 1000
+  },
+  "mamba": {
+    "best_val_exact": 0.9990234375,
+    "finished_utc": "2026-06-12T06:22:18Z",
+    "git_short": "8c7c291",
+    "run_dir": "outputs/mamba/20260612T061236Z-8c7c291",
+    "step": 750
+  }
+}
