@@ -3,11 +3,11 @@
  * models (training/llmviz_train/{mamba,gpt}.py) in the browser.
  *
  * Data is always a Float32Array; arithmetic in ops.ts accumulates in
- * f64 (plain JS numbers) and rounds to f32 on store, matching the
- * fp32-CPU PyTorch reference within the 1e-4 golden-test tolerance.
+ * f64 (plain JS numbers) and rounds to f32 on store, which stays within
+ * the 1e-4 golden-test gate of PyTorch's f32-accumulated kernels.
  */
 
-function checkShape(shape: number[]): number {
+function checkShape(shape: readonly number[]): number {
   let size = 1;
   for (const d of shape) {
     if (!Number.isInteger(d) || d < 0) {
@@ -22,16 +22,16 @@ function checkShape(shape: number[]): number {
 }
 
 export class T {
-  readonly shape: number[];
+  readonly shape: readonly number[];
   readonly data: Float32Array;
 
-  private constructor(shape: number[], data: Float32Array) {
+  private constructor(shape: readonly number[], data: Float32Array) {
     this.shape = shape;
     this.data = data;
   }
 
   /** Build a tensor from values (copied) and a shape; throws on length mismatch. */
-  static from(values: number[] | Float32Array, shape: number[]): T {
+  static from(values: number[] | Float32Array, shape: readonly number[]): T {
     const size = checkShape(shape);
     if (values.length !== size) {
       throw new Error(
@@ -43,7 +43,7 @@ export class T {
   }
 
   /** All-zero tensor of the given shape. */
-  static zeros(shape: number[]): T {
+  static zeros(shape: readonly number[]): T {
     const size = checkShape(shape);
     return new T(shape.slice(), new Float32Array(size));
   }

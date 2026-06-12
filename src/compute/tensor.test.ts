@@ -81,9 +81,11 @@ describe("T.clone", () => {
     const a = T.from([1, 2], [2]);
     const b = a.clone();
     b.data[0] = 42;
-    b.shape[0] = 99;
     expect(a.data[0]).toBe(1);
-    expect(a.shape[0]).toBe(2);
     expect(b.data[1]).toBe(2);
+    // shape is `readonly number[]` (mutation is a compile error); still
+    // assert the clone holds its own array instance, not a shared one.
+    expect(b.shape).toEqual(a.shape);
+    expect(b.shape).not.toBe(a.shape);
   });
 });

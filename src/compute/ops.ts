@@ -5,9 +5,8 @@
  * Conventions:
  *  - every op returns a new T; inputs are never mutated;
  *  - inner loops accumulate in f64 (plain JS numbers) and round to f32
- *    only on store into the output Float32Array — same order of
- *    operations as a naive fp32 PyTorch CPU kernel, well within the
- *    1e-4 golden-test tolerance;
+ *    only on store into the output Float32Array; this stays within the
+ *    1e-4 golden-test gate of PyTorch's f32-accumulated kernels;
  *  - "last dim" ops (rmsnorm, layernorm, softmax, argmax) treat the
  *    tensor as (rows, lastDim) regardless of leading rank.
  */
@@ -167,6 +166,7 @@ export function softmax(x: T): T {
   const d = lastDim(x);
   const out = T.zeros(x.shape);
   const rows = x.size / d;
+  const exps = new Float64Array(d); // scratch row buffer, reused across rows
   for (let r = 0; r < rows; r++) {
     const base = r * d;
     let max = -Infinity;
@@ -174,7 +174,6 @@ export function softmax(x: T): T {
       if (x.data[base + j] > max) max = x.data[base + j];
     }
     let sum = 0;
-    const exps = new Float64Array(d);
     for (let j = 0; j < d; j++) {
       const e = Math.exp(x.data[base + j] - max);
       exps[j] = e;
