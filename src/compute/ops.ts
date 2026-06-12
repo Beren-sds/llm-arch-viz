@@ -81,6 +81,19 @@ export function linear(x: T, w: T, b?: T): T {
   return out;
 }
 
+/** 2D transpose: (m,n) -> (n,m) (the attention k^T in gpt.py). */
+export function transpose2d(x: T): T {
+  assert2D(x, "transpose2d: x");
+  const [m, n] = x.shape;
+  const out = T.zeros([n, m]);
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j < n; j++) {
+      out.data[j * m + i] = x.data[i * n + j];
+    }
+  }
+  return out;
+}
+
 /** nn.Embedding row gather: ids (n) into table (vocab,d) -> (n,d). */
 export function embedding(ids: number[], table: T): T {
   assert2D(table, "embedding: table");

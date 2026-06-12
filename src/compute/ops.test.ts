@@ -16,6 +16,7 @@ import {
   silu,
   softmax,
   softplus,
+  transpose2d,
 } from "./ops";
 
 describe("matmul", () => {
@@ -333,5 +334,32 @@ describe("argmax", () => {
 
   it("first occurrence wins on ties", () => {
     expect(argmax(T.from([2, 2, 1], [3]))).toEqual([0]);
+  });
+});
+
+describe("transpose2d", () => {
+  it("transposes a rectangular matrix", () => {
+    const x = T.from([1, 2, 3, 4, 5, 6], [2, 3]);
+    const y = transpose2d(x);
+    expect(y.shape).toEqual([3, 2]);
+    expect(Array.from(y.data)).toEqual([1, 4, 2, 5, 3, 6]);
+  });
+
+  it("round-trips: transpose(transpose(x)) === x", () => {
+    const x = T.from([1, -2, 3, 4, -5, 6, 7, 8], [4, 2]);
+    const y = transpose2d(transpose2d(x));
+    expect(y.shape).toEqual([4, 2]);
+    expect(Array.from(y.data)).toEqual(Array.from(x.data));
+  });
+
+  it("does not mutate its input", () => {
+    const x = T.from([1, 2, 3, 4], [2, 2]);
+    transpose2d(x);
+    expect(Array.from(x.data)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("throws on non-2D input", () => {
+    expect(() => transpose2d(T.zeros([3]))).toThrow();
+    expect(() => transpose2d(T.zeros([2, 3, 4]))).toThrow();
   });
 });

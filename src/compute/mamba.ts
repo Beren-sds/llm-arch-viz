@@ -31,8 +31,9 @@ import {
   silu,
   softplus,
 } from "./ops";
-import { getTensor } from "./loader";
+import { getTensor, type Manifest } from "./loader";
 import type { Recorder } from "./recorder";
+import { dimsFromManifest, sliceCols } from "./util";
 
 /** Mamba dims as exported in manifest.json (dt_rank = ceil(d_model/16)). */
 export interface MambaDims {
@@ -45,15 +46,19 @@ export interface MambaDims {
   dt_rank: number;
 }
 
-/** Column slice [start, end) of a 2D tensor: (rows, cols) -> (rows, end-start). */
-function sliceCols(x: T, start: number, end: number): T {
-  const [rows, cols] = x.shape;
-  const width = end - start;
-  const out = T.zeros([rows, width]);
-  for (let r = 0; r < rows; r++) {
-    out.data.set(x.data.subarray(r * cols + start, r * cols + end), r * width);
-  }
-  return out;
+const MAMBA_DIM_KEYS = [
+  "n_layer",
+  "d_model",
+  "d_state",
+  "d_conv",
+  "expand",
+  "vocab_size",
+  "dt_rank",
+] as const;
+
+/** Validated MambaDims from a manifest (throws on wrong arch / missing keys). */
+export function mambaDimsFrom(manifest: Manifest): MambaDims {
+  return dimsFromManifest(manifest, "mamba", MAMBA_DIM_KEYS);
 }
 
 /**
