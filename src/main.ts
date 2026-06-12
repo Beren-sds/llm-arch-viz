@@ -2,6 +2,8 @@ import "./style.css";
 import { createSceneShell } from "./engine/scene";
 import { OrbitControls } from "./engine/controls";
 import { TensorView } from "./engine/tensorView";
+import { Picker } from "./engine/picking";
+import { Tooltip } from "./engine/tooltip";
 import { T } from "./compute/tensor";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -49,6 +51,17 @@ shell.camera.position.set(0, 0, 160);
 const controls = new OrbitControls(shell.camera, shell.renderer.domElement);
 controls.target.set(0, 0, 0);
 
+// Hover picking -> tooltip: the Picker stores the latest pointermove and
+// raycasts at most once per frame (picker.update() in the render loop).
+const picker = new Picker(shell.camera, shell.renderer.domElement);
+picker.add({ view, formula: "demo[i, j] = sin(0.3·i) + cos(0.2·j)" });
+const tooltip = new Tooltip(app);
+picker.onPick = (result, x, y) => {
+  if (result) tooltip.show(result, x, y);
+  else tooltip.hide();
+};
+
 shell.start(() => {
   controls.update();
+  picker.update();
 });

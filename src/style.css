@@ -36,6 +36,49 @@ body {
   max-width: 42rem;
 }
 
+/* Hover tooltip for tensor cells (engine/tooltip.ts). */
+.tensor-tooltip {
+  display: none;
+  position: fixed;
+  left: 0;
+  top: 0;
+  max-width: 28rem;
+  padding: 6px 10px;
+  background: rgba(17, 21, 30, 0.95);
+  border: 1px solid #2a3142;
+  border-radius: 4px;
+  color: #e6e8ee;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.tensor-tooltip.visible {
+  display: block;
+}
+
+.tensor-tooltip-name {
+  color: #7fb4ff;
+  font-weight: 600;
+}
+
+.tensor-tooltip-indices {
+  color: #9aa3b5;
+}
+
+/* Keep in sync with ERROR_COLOR (magenta) in engine/colormap.ts. */
+.tensor-tooltip-value.is-nan {
+  color: #ff00ff;
+  font-weight: 600;
+}
+
+.tensor-tooltip-formula {
+  margin-top: 2px;
+  padding-top: 2px;
+  border-top: 1px solid #2a3142;
+  color: #b9c0cf;
+}
+
 /* Dev-only FPS readout (createSceneShell, import.meta.env.DEV). */
 .fps-stats {
   position: fixed;
