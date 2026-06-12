@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { loadModel, parseWeights, type Manifest, type TensorEntry } from "./loader";
+import {
+  getTensor,
+  loadModel,
+  parseWeights,
+  type LoadedModel,
+  type Manifest,
+  type TensorEntry,
+} from "./loader";
+import { T } from "./tensor";
 
 /**
  * Hand-built fixture: 3 tiny tensors written little-endian via DataView,
@@ -151,6 +159,29 @@ describe("loadModel", () => {
     ]);
   });
 
+  it("strips trailing slashes from baseUrl (no double slash in URLs)", async () => {
+    const seen: string[] = [];
+    const manifest = makeFixtureManifest();
+    const bin = makeFixtureBin();
+    const fetchFn = (async (input: RequestInfo | URL) => {
+      seen.push(String(input));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => manifest,
+        arrayBuffer: async () => bin,
+      } as Response;
+    }) as typeof fetch;
+    await loadModel("test", "/", fetchFn);
+    await loadModel("test", "https://example.test///", fetchFn);
+    expect(seen).toEqual([
+      "/models/test/manifest.json",
+      "/models/test/weights.bin",
+      "https://example.test/models/test/manifest.json",
+      "https://example.test/models/test/weights.bin",
+    ]);
+  });
+
   it("throws on non-OK response with status and url in the message", async () => {
     const fetchFn = (async () => ({ ok: false, status: 404 }) as Response) as typeof fetch;
     await expect(loadModel("nope", "/base", fetchFn)).rejects.toThrow(
@@ -225,6 +256,32 @@ describe("real export artifacts (read from disk)", () => {
   });
 });
 
-// Compile-time check: TensorEntry stays structurally usable on its own.
+describe("getTensor", () => {
+  it("returns the named tensor when present", () => {
+    const weights = new Map([["a", T.from([1, 2], [2])]]);
+    expect(getTensor(weights, "a").shape).toEqual([2]);
+  });
+
+  it('throws unknown tensor "<name>" when absent', () => {
+    const weights = new Map<string, T>();
+    expect(() => getTensor(weights, "blocks.9.A_log")).toThrow(
+      'unknown tensor "blocks.9.A_log"',
+    );
+  });
+});
+
+describe("duplicate tensor names", () => {
+  it("are rejected during validation, before any data is sliced", () => {
+    const manifest = makeFixtureManifest();
+    // Rename c to a duplicate of a, keeping offsets/lengths contiguous so
+    // only the duplicate-name check can fire.
+    manifest.tensors[2] = { ...manifest.tensors[2], name: "a", shape: [2] };
+    expect(() => parseWeights(manifest, makeFixtureBin())).toThrow(/duplicate/);
+  });
+});
+
+// Compile-time checks: exported types stay structurally usable on their own.
 const _entryCheck: TensorEntry = { name: "x", shape: [1], offset: 0, length: 1 };
 void _entryCheck;
+const _loadedCheck: LoadedModel | null = null;
+void _loadedCheck;

@@ -275,6 +275,20 @@ export function causalDepthwiseConv1d(x: T, kernels: T, bias: T, dConv: number):
   return out;
 }
 
+/** Elementwise exp (the mamba scan's exp(delta*A) and A = -exp(A_log)). */
+export function exp(x: T): T {
+  const out = T.zeros(x.shape);
+  for (let i = 0; i < x.size; i++) out.data[i] = Math.exp(x.data[i]);
+  return out;
+}
+
+/** Multiply every element by a scalar. */
+export function scale(x: T, s: number): T {
+  const out = T.zeros(x.shape);
+  for (let i = 0; i < x.size; i++) out.data[i] = x.data[i] * s;
+  return out;
+}
+
 /** Elementwise add; shapes must match exactly (no broadcasting). */
 export function add(a: T, b: T): T {
   assertSameShape(a, b, "add");

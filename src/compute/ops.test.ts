@@ -8,9 +8,11 @@ import {
   gelu,
   layernorm,
   linear,
+  exp,
   matmul,
   mul,
   rmsnorm,
+  scale,
   silu,
   softmax,
   softplus,
@@ -279,6 +281,43 @@ describe("add / mul", () => {
     expect(() => add(T.zeros([2, 3]), T.zeros([3, 2]))).toThrow();
     expect(() => add(T.zeros([2]), T.zeros([3]))).toThrow();
     expect(() => mul(T.zeros([2, 2]), T.zeros([4]))).toThrow();
+  });
+});
+
+describe("exp", () => {
+  it("computes Math.exp elementwise, preserving shape", () => {
+    const out = exp(T.from([0, 1, -1], [3, 1]));
+    expect(out.shape).toEqual([3, 1]);
+    expect(out.data[0]).toBe(1);
+    expect(out.data[1]).toBeCloseTo(Math.E, 6);
+    expect(out.data[2]).toBeCloseTo(1 / Math.E, 6);
+  });
+
+  it("does not mutate its input", () => {
+    const x = T.from([1, 2], [2]);
+    exp(x);
+    expect(Array.from(x.data)).toEqual([1, 2]);
+  });
+});
+
+describe("scale", () => {
+  it("multiplies every element by the scalar", () => {
+    const out = scale(T.from([1, -2, 0.5], [3]), -1);
+    expect(Array.from(out.data)).toEqual([-1, 2, -0.5]);
+  });
+
+  it("composes with exp to give A = -exp(A_log)", () => {
+    const aLog = T.from([0, Math.log(2)], [1, 2]);
+    const a = scale(exp(aLog), -1);
+    expect(a.shape).toEqual([1, 2]);
+    expect(a.data[0]).toBe(-1);
+    expect(a.data[1]).toBeCloseTo(-2, 6);
+  });
+
+  it("does not mutate its input", () => {
+    const x = T.from([3], [1]);
+    scale(x, 5);
+    expect(Array.from(x.data)).toEqual([3]);
   });
 });
 

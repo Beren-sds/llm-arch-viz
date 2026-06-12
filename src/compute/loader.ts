@@ -63,7 +63,12 @@ export function parseWeights(manifest: Manifest, bin: ArrayBuffer): Map<string, 
 
   // Validate the tensor table before touching any bytes.
   let cursor = 0;
+  const seen = new Set<string>();
   for (const entry of manifest.tensors) {
+    if (seen.has(entry.name)) {
+      throw new Error(`duplicate tensor name "${entry.name}" in manifest`);
+    }
+    seen.add(entry.name);
     if (entry.offset !== cursor) {
       throw new Error(
         `tensor "${entry.name}": offset ${entry.offset} breaks contiguity ` +
@@ -90,14 +95,29 @@ export function parseWeights(manifest: Manifest, bin: ArrayBuffer): Map<string, 
 
   const weights = new Map<string, T>();
   for (const entry of manifest.tensors) {
-    if (weights.has(entry.name)) {
-      throw new Error(`duplicate tensor name "${entry.name}" in manifest`);
-    }
     // Platform-endian view == little-endian on all our targets (see header).
     const view = new Float32Array(bin, 4 * entry.offset, entry.length);
     weights.set(entry.name, T.from(view, entry.shape));
   }
   return weights;
+}
+
+/**
+ * Look up a weight by name, throwing instead of returning undefined.
+ * Forward passes use this so a typo'd or missing tensor fails loudly.
+ */
+export function getTensor(weights: Map<string, T>, name: string): T {
+  const t = weights.get(name);
+  if (t === undefined) {
+    throw new Error(`unknown tensor "${name}"`);
+  }
+  return t;
+}
+
+/** A fetched-and-parsed model: the manifest plus its named weights. */
+export interface LoadedModel {
+  manifest: Manifest;
+  weights: Map<string, T>;
 }
 
 /**
@@ -110,15 +130,17 @@ export async function loadModel(
   arch: string,
   baseUrl: string,
   fetchFn: typeof fetch = fetch,
-): Promise<{ manifest: Manifest; weights: Map<string, T> }> {
-  const manifestUrl = `${baseUrl}/models/${arch}/manifest.json`;
+): Promise<LoadedModel> {
+  // Trailing slashes (e.g. baseUrl "/") would otherwise double up: "//models/...".
+  const base = baseUrl.replace(/\/+$/, "");
+  const manifestUrl = `${base}/models/${arch}/manifest.json`;
   const manifestRes = await fetchFn(manifestUrl);
   if (!manifestRes.ok) {
     throw new Error(`failed to fetch ${manifestUrl}: HTTP ${manifestRes.status}`);
   }
   const manifest = (await manifestRes.json()) as Manifest;
 
-  const binUrl = `${baseUrl}/models/${arch}/weights.bin`;
+  const binUrl = `${base}/models/${arch}/weights.bin`;
   const binRes = await fetchFn(binUrl);
   if (!binRes.ok) {
     throw new Error(`failed to fetch ${binUrl}: HTTP ${binRes.status}`);
