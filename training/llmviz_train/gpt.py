@@ -29,7 +29,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from llmviz_train.mamba import _snapshot
+from llmviz_train.recording import snapshot
 
 
 class CausalSelfAttention(nn.Module):
@@ -56,7 +56,7 @@ class CausalSelfAttention(nn.Module):
 
         def rec(name: str, tensor: torch.Tensor) -> None:
             if record is not None:
-                record[prefix + name] = _snapshot(tensor)
+                record[prefix + name] = snapshot(tensor)
 
         qkv = self.qkv_proj(x)  # (B, T, 3*d_model)
         q, k, v = qkv.chunk(3, dim=-1)  # each (B, T, d_model)
@@ -102,7 +102,7 @@ class MLP(nn.Module):
 
         def rec(name: str, tensor: torch.Tensor) -> None:
             if record is not None:
-                record[prefix + name] = _snapshot(tensor)
+                record[prefix + name] = snapshot(tensor)
 
         pre = self.fc(x)  # (B, T, d_mlp)
         rec("fc", pre[0])
@@ -147,7 +147,7 @@ class GPT(nn.Module):
 
         def rec(name: str, tensor: torch.Tensor) -> None:
             if acts is not None:
-                acts[name] = _snapshot(tensor)
+                acts[name] = snapshot(tensor)
 
         positions = torch.arange(T, device=tokens.device)
         x = self.tok_embedding(tokens) + self.pos_embedding(positions)
