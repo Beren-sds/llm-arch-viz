@@ -24,4 +24,6 @@ def seed_all(seed: int) -> torch.Generator:
         torch.mps.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-    return torch.Generator().manual_seed(seed)
+    # seed + 1 decorrelates the data-sampling stream from the weight-init
+    # stream (global torch RNG), which would otherwise be bit-identical.
+    return torch.Generator().manual_seed(seed + 1)
