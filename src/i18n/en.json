@@ -1,0 +1,13 @@
+{
+  "ui.play": "Play",
+  "ui.pause": "Pause",
+  "ui.next": "Next",
+  "ui.prev": "Previous",
+  "ui.chapters": "Chapters",
+  "ui.langToggle": "中文",
+  "ui.tokenStep": "Step token",
+  "ui.loading": "Loading model weights…",
+  "ui.loadError": "Couldn't load the model data.",
+  "ui.retry": "Retry",
+  "ui.webglError": "WebGL isn't available in this browser. Try updating it or turning on hardware acceleration."
+}

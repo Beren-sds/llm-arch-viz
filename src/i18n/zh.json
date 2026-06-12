@@ -1,0 +1,13 @@
+{
+  "ui.play": "播放",
+  "ui.pause": "暂停",
+  "ui.next": "下一节",
+  "ui.prev": "上一节",
+  "ui.chapters": "章节",
+  "ui.langToggle": "English",
+  "ui.tokenStep": "逐 token 步进",
+  "ui.loading": "正在加载模型权重…",
+  "ui.loadError": "模型数据加载失败。",
+  "ui.retry": "重试",
+  "ui.webglError": "当前浏览器无法使用 WebGL。请尝试更新浏览器，或开启硬件加速。"
+}

@@ -96,9 +96,16 @@ function zeroKf(): CameraKeyframe {
  *
  * Retargeting mid-flight is smooth: a goTo during an animation restarts
  * from the currently interpolated view, never snapping.
+ *
+ * Ownership contract with OrbitControls (or any other camera writer):
+ * wire the controls' 'start' event → player.cancel(); while the player is
+ * animating either skip controls.update() entirely, or sync the controls'
+ * state inside applyView and call controls.update() last — and report
+ * user-driven moves back via syncCurrent() so the next goTo flies from
+ * where the camera actually is.
  */
 export class TourPlayer {
-  state: "idle" | "animating" = "idle";
+  private phase: "idle" | "animating" = "idle";
 
   private readonly applyView: TourPlayerOptions["applyView"];
   private readonly durationMs: number;
@@ -115,7 +122,32 @@ export class TourPlayer {
 
   constructor(opts: TourPlayerOptions) {
     this.applyView = opts.applyView;
-    this.durationMs = opts.durationMs ?? 1200;
+    // Clamp to >= 1 ms: a zero/negative duration would divide by zero in
+    // update() and stall the player at a NaN view.
+    this.durationMs = Math.max(1, opts.durationMs ?? 1200);
+  }
+
+  get state(): "idle" | "animating" {
+    return this.phase;
+  }
+
+  /**
+   * Tell the player where the camera actually is after an EXTERNAL writer
+   * (OrbitControls drag, manual camera set) moved it. The next goTo then
+   * animates from that view instead of snapping back to the player's stale
+   * idea of "current". Does not call applyView (the camera is already
+   * there) and does not touch an in-flight animation — per the ownership
+   * contract, cancel() on the controls' 'start' event comes first.
+   */
+  syncCurrent(
+    pos: readonly [number, number, number],
+    target: readonly [number, number, number],
+  ): void {
+    if (this.current === null) this.current = zeroKf();
+    for (let i = 0; i < 3; i++) {
+      this.current.pos[i] = pos[i];
+      this.current.target[i] = target[i];
+    }
   }
 
   /**
@@ -127,7 +159,7 @@ export class TourPlayer {
   goTo(kf: CameraKeyframe, opts?: GoToOptions): void {
     if (this.current === null || opts?.instant) {
       // Instant path: apply now, complete now.
-      this.state = "idle";
+      this.phase = "idle";
       this.startMs = null;
       this.onArrive = null;
       this.apply(kf);
@@ -140,7 +172,7 @@ export class TourPlayer {
     copyInto(this.to, kf); // copy: caller may mutate kf afterwards
     this.onArrive = opts?.onArrive ?? null;
     this.startMs = null; // clock opens on the next update()
-    this.state = "animating";
+    this.phase = "animating";
   }
 
   /**
@@ -149,7 +181,7 @@ export class TourPlayer {
    * returns the player to 'idle'. No-op while idle.
    */
   update(nowMs: number): void {
-    if (this.state !== "animating") return;
+    if (this.phase !== "animating") return;
     if (this.startMs === null) {
       this.startMs = nowMs;
       this.apply(this.from);
@@ -158,7 +190,7 @@ export class TourPlayer {
     const t = (nowMs - this.startMs) / this.durationMs;
     if (t >= 1) {
       this.apply(this.to);
-      this.state = "idle";
+      this.phase = "idle";
       this.startMs = null;
       const cb = this.onArrive;
       this.onArrive = null;
@@ -170,7 +202,7 @@ export class TourPlayer {
 
   /** Stop animating, staying at the current interpolated view. onArrive is dropped. */
   cancel(): void {
-    this.state = "idle";
+    this.phase = "idle";
     this.startMs = null;
     this.onArrive = null;
   }

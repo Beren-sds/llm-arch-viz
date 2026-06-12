@@ -292,4 +292,75 @@ describe("TourPlayer", () => {
     p.update(1000);
     expect(spy.last().pos[0]).toBe(10);
   });
+
+  it("state is a read-only getter (assignment throws)", () => {
+    const p = new TourPlayer({ applyView: makeSpy().applyView });
+    expect(() => {
+      (p as unknown as { state: string }).state = "animating";
+    }).toThrow(TypeError);
+    expect(p.state).toBe("idle");
+  });
+
+  it("clamps durationMs to >= 1 (zero/negative never divide by zero)", () => {
+    for (const durationMs of [0, -500]) {
+      const spy = makeSpy();
+      const p = new TourPlayer({ applyView: spy.applyView, durationMs });
+      p.goTo(A);
+      p.goTo(B);
+      p.update(0); // opens the clock at the start view
+      p.update(0.5); // t = 0.5 of the clamped 1 ms — still animating, finite
+      expect(p.state).toBe("animating");
+      expect(Number.isFinite(spy.last().pos[0])).toBe(true);
+      p.update(1); // t = 1 → arrive exactly
+      expect(p.state).toBe("idle");
+      expect(spy.last().pos).toEqual(B.pos);
+    }
+  });
+});
+
+describe("TourPlayer.syncCurrent", () => {
+  it("next goTo animates from the externally synced view (no snap-back)", () => {
+    const spy = makeSpy();
+    const p = new TourPlayer({ applyView: spy.applyView, durationMs: 1000 });
+    p.goTo(A); // player thinks we're at A
+    // OrbitControls dragged the camera elsewhere:
+    p.syncCurrent([100, 200, 300], [4, 5, 6]);
+    p.goTo(B);
+    p.update(0); // t=0 must start from the synced view, not from A
+    expect(spy.last().pos).toEqual([100, 200, 300]);
+    expect(spy.last().target).toEqual([4, 5, 6]);
+    p.update(1000);
+    expect(spy.last().pos).toEqual(B.pos);
+  });
+
+  it("syncCurrent before any goTo seeds the view: first goTo animates instead of snapping", () => {
+    const spy = makeSpy();
+    const p = new TourPlayer({ applyView: spy.applyView, durationMs: 1000 });
+    p.syncCurrent([100, 0, 0], [0, 0, 0]);
+    p.goTo(B);
+    expect(p.state).toBe("animating");
+    p.update(0);
+    expect(spy.last().pos).toEqual([100, 0, 0]);
+  });
+
+  it("does not call applyView (the external writer already moved the camera)", () => {
+    const spy = makeSpy();
+    const p = new TourPlayer({ applyView: spy.applyView });
+    p.goTo(A);
+    const n = spy.calls.length;
+    p.syncCurrent([1, 2, 3], [4, 5, 6]);
+    expect(spy.calls.length).toBe(n);
+  });
+
+  it("copies its arguments — later caller mutation is ignored", () => {
+    const spy = makeSpy();
+    const p = new TourPlayer({ applyView: spy.applyView, durationMs: 1000 });
+    p.goTo(A);
+    const pos: [number, number, number] = [100, 0, 0];
+    p.syncCurrent(pos, [0, 0, 0]);
+    pos[0] = -999;
+    p.goTo(B);
+    p.update(0);
+    expect(spy.last().pos[0]).toBe(100);
+  });
 });

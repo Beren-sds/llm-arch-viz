@@ -201,6 +201,10 @@ export function disposeLabel(obj: THREE.Object3D): void {
  * is still in flight) — so this waits on the 'synccomplete' EVENT, which
  * fires for every completed sync, and short-circuits via textRenderInfo
  * when the text already finished before we attached.
+ *
+ * Don't dispose an awaited label mid-wait — a disposed Text never fires
+ * 'synccomplete', so the promise never settles; order is create → await →
+ * transition (dispose only after the await resolves).
  */
 export function labelsReady(...objs: THREE.Object3D[]): Promise<void> {
   const pending: Promise<void>[] = [];
