@@ -74,14 +74,22 @@ function stack(slices: T[]): T {
   return out;
 }
 
+/** Minimal attention dims (a structural subset of GptDims and MoeDims). */
+export interface AttnDims {
+  d_model: number;
+  n_head: number;
+  head_dim: number;
+}
+
 /**
  * One CausalSelfAttention (gpt.py CausalSelfAttention.forward), no
  * residual — the caller adds it. x: (T, d_model) -> (T, d_model).
- * Records q/k/v/scores/weights/out under `prefix`.
+ * Records q/k/v/scores/weights/out under `prefix`. Exported so MoE (whose
+ * attention is identical, same `attns.{i}.*` weight names) can reuse it.
  */
-function causalSelfAttention(
+export function causalSelfAttention(
   weights: Map<string, T>,
-  dims: GptDims,
+  dims: AttnDims,
   layer: number,
   x: T,
   rec: Recorder | undefined,

@@ -96,6 +96,9 @@ def build_dims(arch: str, cfg: dict, state_dict: dict) -> dict:
         dims["max_seq_len"] = int(state_dict["pos_embedding.weight"].shape[0])
     elif arch == "rwkv":
         dims["d_ffn"] = dims["ffn_mult"] * dims["d_model"]
+    elif arch == "moe":
+        dims["head_dim"] = dims["d_model"] // dims["n_head"]
+        dims["max_seq_len"] = int(state_dict["pos_embedding.weight"].shape[0])
     else:
         raise ValueError(f"unknown arch {arch!r}")
     return dims

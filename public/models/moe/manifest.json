@@ -1,0 +1,489 @@
+{
+  "arch": "moe",
+  "offset_unit": "float32",
+  "dims": {
+    "n_layer": 2,
+    "d_model": 48,
+    "n_head": 3,
+    "d_expert": 64,
+    "n_experts": 4,
+    "top_k": 2,
+    "vocab_size": 16,
+    "head_dim": 16,
+    "max_seq_len": 32
+  },
+  "checkpoint": {
+    "run_dir": "outputs/moe/20260613T115112Z-35fad4f",
+    "step": 750,
+    "val_exact": 0.9990234375,
+    "golden_seed": 1131,
+    "golden_candidates_skipped": 0
+  },
+  "tensors": [
+    {
+      "name": "attns.0.out_proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 0,
+      "length": 48
+    },
+    {
+      "name": "attns.0.out_proj.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 48,
+      "length": 2304
+    },
+    {
+      "name": "attns.0.qkv_proj.bias",
+      "shape": [
+        144
+      ],
+      "offset": 2352,
+      "length": 144
+    },
+    {
+      "name": "attns.0.qkv_proj.weight",
+      "shape": [
+        144,
+        48
+      ],
+      "offset": 2496,
+      "length": 6912
+    },
+    {
+      "name": "attns.1.out_proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 9408,
+      "length": 48
+    },
+    {
+      "name": "attns.1.out_proj.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 9456,
+      "length": 2304
+    },
+    {
+      "name": "attns.1.qkv_proj.bias",
+      "shape": [
+        144
+      ],
+      "offset": 11760,
+      "length": 144
+    },
+    {
+      "name": "attns.1.qkv_proj.weight",
+      "shape": [
+        144,
+        48
+      ],
+      "offset": 11904,
+      "length": 6912
+    },
+    {
+      "name": "lm_head.weight",
+      "shape": [
+        16,
+        48
+      ],
+      "offset": 18816,
+      "length": 768
+    },
+    {
+      "name": "ln1s.0.bias",
+      "shape": [
+        48
+      ],
+      "offset": 19584,
+      "length": 48
+    },
+    {
+      "name": "ln1s.0.weight",
+      "shape": [
+        48
+      ],
+      "offset": 19632,
+      "length": 48
+    },
+    {
+      "name": "ln1s.1.bias",
+      "shape": [
+        48
+      ],
+      "offset": 19680,
+      "length": 48
+    },
+    {
+      "name": "ln1s.1.weight",
+      "shape": [
+        48
+      ],
+      "offset": 19728,
+      "length": 48
+    },
+    {
+      "name": "ln2s.0.bias",
+      "shape": [
+        48
+      ],
+      "offset": 19776,
+      "length": 48
+    },
+    {
+      "name": "ln2s.0.weight",
+      "shape": [
+        48
+      ],
+      "offset": 19824,
+      "length": 48
+    },
+    {
+      "name": "ln2s.1.bias",
+      "shape": [
+        48
+      ],
+      "offset": 19872,
+      "length": 48
+    },
+    {
+      "name": "ln2s.1.weight",
+      "shape": [
+        48
+      ],
+      "offset": 19920,
+      "length": 48
+    },
+    {
+      "name": "ln_f.bias",
+      "shape": [
+        48
+      ],
+      "offset": 19968,
+      "length": 48
+    },
+    {
+      "name": "ln_f.weight",
+      "shape": [
+        48
+      ],
+      "offset": 20016,
+      "length": 48
+    },
+    {
+      "name": "moes.0.experts.0.fc.bias",
+      "shape": [
+        64
+      ],
+      "offset": 20064,
+      "length": 64
+    },
+    {
+      "name": "moes.0.experts.0.fc.weight",
+      "shape": [
+        64,
+        48
+      ],
+      "offset": 20128,
+      "length": 3072
+    },
+    {
+      "name": "moes.0.experts.0.proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 23200,
+      "length": 48
+    },
+    {
+      "name": "moes.0.experts.0.proj.weight",
+      "shape": [
+        48,
+        64
+      ],
+      "offset": 23248,
+      "length": 3072
+    },
+    {
+      "name": "moes.0.experts.1.fc.bias",
+      "shape": [
+        64
+      ],
+      "offset": 26320,
+      "length": 64
+    },
+    {
+      "name": "moes.0.experts.1.fc.weight",
+      "shape": [
+        64,
+        48
+      ],
+      "offset": 26384,
+      "length": 3072
+    },
+    {
+      "name": "moes.0.experts.1.proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 29456,
+      "length": 48
+    },
+    {
+      "name": "moes.0.experts.1.proj.weight",
+      "shape": [
+        48,
+        64
+      ],
+      "offset": 29504,
+      "length": 3072
+    },
+    {
+      "name": "moes.0.experts.2.fc.bias",
+      "shape": [
+        64
+      ],
+      "offset": 32576,
+      "length": 64
+    },
+    {
+      "name": "moes.0.experts.2.fc.weight",
+      "shape": [
+        64,
+        48
+      ],
+      "offset": 32640,
+      "length": 3072
+    },
+    {
+      "name": "moes.0.experts.2.proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 35712,
+      "length": 48
+    },
+    {
+      "name": "moes.0.experts.2.proj.weight",
+      "shape": [
+        48,
+        64
+      ],
+      "offset": 35760,
+      "length": 3072
+    },
+    {
+      "name": "moes.0.experts.3.fc.bias",
+      "shape": [
+        64
+      ],
+      "offset": 38832,
+      "length": 64
+    },
+    {
+      "name": "moes.0.experts.3.fc.weight",
+      "shape": [
+        64,
+        48
+      ],
+      "offset": 38896,
+      "length": 3072
+    },
+    {
+      "name": "moes.0.experts.3.proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 41968,
+      "length": 48
+    },
+    {
+      "name": "moes.0.experts.3.proj.weight",
+      "shape": [
+        48,
+        64
+      ],
+      "offset": 42016,
+      "length": 3072
+    },
+    {
+      "name": "moes.0.router.weight",
+      "shape": [
+        4,
+        48
+      ],
+      "offset": 45088,
+      "length": 192
+    },
+    {
+      "name": "moes.1.experts.0.fc.bias",
+      "shape": [
+        64
+      ],
+      "offset": 45280,
+      "length": 64
+    },
+    {
+      "name": "moes.1.experts.0.fc.weight",
+      "shape": [
+        64,
+        48
+      ],
+      "offset": 45344,
+      "length": 3072
+    },
+    {
+      "name": "moes.1.experts.0.proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 48416,
+      "length": 48
+    },
+    {
+      "name": "moes.1.experts.0.proj.weight",
+      "shape": [
+        48,
+        64
+      ],
+      "offset": 48464,
+      "length": 3072
+    },
+    {
+      "name": "moes.1.experts.1.fc.bias",
+      "shape": [
+        64
+      ],
+      "offset": 51536,
+      "length": 64
+    },
+    {
+      "name": "moes.1.experts.1.fc.weight",
+      "shape": [
+        64,
+        48
+      ],
+      "offset": 51600,
+      "length": 3072
+    },
+    {
+      "name": "moes.1.experts.1.proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 54672,
+      "length": 48
+    },
+    {
+      "name": "moes.1.experts.1.proj.weight",
+      "shape": [
+        48,
+        64
+      ],
+      "offset": 54720,
+      "length": 3072
+    },
+    {
+      "name": "moes.1.experts.2.fc.bias",
+      "shape": [
+        64
+      ],
+      "offset": 57792,
+      "length": 64
+    },
+    {
+      "name": "moes.1.experts.2.fc.weight",
+      "shape": [
+        64,
+        48
+      ],
+      "offset": 57856,
+      "length": 3072
+    },
+    {
+      "name": "moes.1.experts.2.proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 60928,
+      "length": 48
+    },
+    {
+      "name": "moes.1.experts.2.proj.weight",
+      "shape": [
+        48,
+        64
+      ],
+      "offset": 60976,
+      "length": 3072
+    },
+    {
+      "name": "moes.1.experts.3.fc.bias",
+      "shape": [
+        64
+      ],
+      "offset": 64048,
+      "length": 64
+    },
+    {
+      "name": "moes.1.experts.3.fc.weight",
+      "shape": [
+        64,
+        48
+      ],
+      "offset": 64112,
+      "length": 3072
+    },
+    {
+      "name": "moes.1.experts.3.proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 67184,
+      "length": 48
+    },
+    {
+      "name": "moes.1.experts.3.proj.weight",
+      "shape": [
+        48,
+        64
+      ],
+      "offset": 67232,
+      "length": 3072
+    },
+    {
+      "name": "moes.1.router.weight",
+      "shape": [
+        4,
+        48
+      ],
+      "offset": 70304,
+      "length": 192
+    },
+    {
+      "name": "pos_embedding.weight",
+      "shape": [
+        32,
+        48
+      ],
+      "offset": 70496,
+      "length": 1536
+    },
+    {
+      "name": "tok_embedding.weight",
+      "shape": [
+        16,
+        48
+      ],
+      "offset": 72032,
+      "length": 768
+    }
+  ]
+}

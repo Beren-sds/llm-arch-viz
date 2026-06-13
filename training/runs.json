@@ -13,6 +13,13 @@
     "run_dir": "outputs/mamba/20260612T061236Z-8c7c291",
     "step": 750
   },
+  "moe": {
+    "best_val_exact": 0.9990234375,
+    "finished_utc": "2026-06-13T11:51:34Z",
+    "git_short": "35fad4f",
+    "run_dir": "outputs/moe/20260613T115112Z-35fad4f",
+    "step": 750
+  },
   "rwkv": {
     "best_val_exact": 0.9970703125,
     "finished_utc": "2026-06-13T11:29:35Z",
