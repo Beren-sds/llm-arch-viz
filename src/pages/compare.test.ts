@@ -36,7 +36,7 @@ describe("compare pure helpers", () => {
 });
 
 describe("createComparePage (happy-dom)", () => {
-  it("renders a row per arch with conceptual cells from i18n", () => {
+  it("renders a row per arch, grouping recurrences (mamba/rwkv) first", () => {
     const container = document.createElement("div");
     createComparePage({
       container,
@@ -49,13 +49,13 @@ describe("createComparePage (happy-dom)", () => {
     });
     const rows = container.querySelectorAll(".compare-row");
     expect(rows).toHaveLength(2);
+    // Recurrence (mamba) is grouped ahead of attention (gpt).
     const opens = [...container.querySelectorAll(".compare-open")].map((e) => e.textContent);
-    expect(opens).toEqual([en["card.gpt.title"], en["card.mamba.title"]]);
-    // Cost cell carries the i18n cost string.
+    expect(opens).toEqual([en["card.mamba.title"], en["card.gpt.title"]]);
     expect(container.textContent).toContain(en["compare.gpt.cost"]);
   });
 
-  it("fills live parameter counts and resolves ready", async () => {
+  it("fills live parameter counts (grouped order) and scales bars", async () => {
     const container = document.createElement("div");
     const page = createComparePage({
       container,
@@ -67,8 +67,15 @@ describe("createComparePage (happy-dom)", () => {
       fetchFn: fetchStub({ gpt: 61234, mamba: 2000 }),
     });
     await page.ready;
-    const params = [...container.querySelectorAll(".compare-cell-params")].map((e) => e.textContent);
-    expect(params).toEqual(["61K", "2.0K"]);
+    // Grouped order is mamba, then gpt.
+    const vals = [...container.querySelectorAll(".compare-param-val")].map((e) => e.textContent);
+    expect(vals).toEqual(["2.0K", "61K"]);
+    // Bars are scaled to the largest model (gpt = 100%, mamba ≈ 3%).
+    const bars = [...container.querySelectorAll(".compare-bar-fill")].map(
+      (e) => (e as HTMLElement).style.width,
+    );
+    expect(bars[1]).toBe("100%");
+    expect(bars[0]).toBe("3%");
   });
 
   it("shows — for a failed manifest fetch (never a fake number)", async () => {
@@ -84,7 +91,7 @@ describe("createComparePage (happy-dom)", () => {
       fetchFn: fetchStub({ gpt: "fail" }),
     });
     await page.ready;
-    expect(container.querySelector(".compare-cell-params")?.textContent).toBe("—");
+    expect(container.querySelector(".compare-param-val")?.textContent).toBe("—");
     errSpy.mockRestore();
   });
 
@@ -101,8 +108,9 @@ describe("createComparePage (happy-dom)", () => {
       onHome,
       fetchFn: fetchStub({ gpt: 1000, mamba: 2000 }),
     });
+    // First row is the grouped-first recurrence (mamba).
     container.querySelector<HTMLButtonElement>(".compare-open")!.click();
-    expect(onOpen).toHaveBeenCalledWith("gpt");
+    expect(onOpen).toHaveBeenCalledWith("mamba");
     container.querySelector<HTMLButtonElement>(".viz-home")!.click();
     expect(onHome).toHaveBeenCalled();
   });

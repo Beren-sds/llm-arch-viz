@@ -8,6 +8,7 @@
 
 import type { I18n } from "../i18n/i18n";
 import { button, el } from "./dom";
+import { archAccent, archGlyph } from "./archMeta";
 
 export interface LandingCard {
   /** Architecture id; card.<id>.title / card.<id>.desc must exist in i18n. */
@@ -54,6 +55,9 @@ export function createLanding(deps: LandingDeps): Landing {
     [];
   for (const card of deps.cards) {
     const c = el("article", `landing-card${card.live ? "" : " is-soon"}`);
+    c.style.setProperty("--accent", archAccent(card.id));
+    const glyph = el("div", "landing-card-glyph");
+    glyph.innerHTML = archGlyph(card.id);
     const title = el("h2", "landing-card-title");
     const desc = el("p", "landing-card-desc");
     let action: HTMLElement;
@@ -64,7 +68,7 @@ export function createLanding(deps: LandingDeps): Landing {
     } else {
       action = el("span", "landing-soon");
     }
-    c.append(title, desc, action);
+    c.append(glyph, title, desc, action);
     // The whole live card is a click target, not just the button.
     if (card.live) {
       c.classList.add("is-live");

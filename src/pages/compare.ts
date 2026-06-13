@@ -10,6 +10,10 @@
 import type { I18n } from "../i18n/i18n";
 import type { Manifest } from "../compute/loader";
 import { button, el } from "./dom";
+import { archAccent } from "./archMeta";
+
+/** O(1)-state recurrences; grouped ahead of the O(T²) attention models. */
+const RECURRENCE = new Set(["mamba", "rwkv"]);
 
 /** Total parameters in a manifest = Σ over tensors of the shape product. */
 export function totalParams(manifest: { tensors: { shape: number[] }[] }): number {
@@ -70,6 +74,12 @@ export function createComparePage(deps: CompareDeps): ComparePage {
   for (const th of headCells) headRow.appendChild(th);
   thead.appendChild(headRow);
 
+  // Group O(1)-state recurrences ahead of O(T²) attention models (stable).
+  const ordered = [...archs].sort(
+    (a, b) => (RECURRENCE.has(a) ? 0 : 1) - (RECURRENCE.has(b) ? 0 : 1),
+  );
+  const lastRecurrence = ordered.filter((id) => RECURRENCE.has(id)).at(-1);
+
   const tbody = el("tbody", "");
   /** Per-arch refs so render() can re-apply i18n text without rebuilding. */
   const rows: Array<{
@@ -78,23 +88,33 @@ export function createComparePage(deps: CompareDeps): ComparePage {
     mix: HTMLElement;
     cost: HTMLElement;
     ff: HTMLElement;
-    params: HTMLElement;
+    paramVal: HTMLElement;
+    bar: HTMLElement;
     idea: HTMLElement;
   }> = [];
-  for (const id of archs) {
-    const tr = el("tr", "compare-row");
+  for (const id of ordered) {
+    const tr = el("tr", id === lastRecurrence ? "compare-row compare-group-end" : "compare-row");
     const nameCell = el("td", "compare-cell-arch");
+    const dot = el("span", "compare-dot");
+    dot.style.background = archAccent(id);
     const name = button("compare-open");
+    name.style.color = archAccent(id);
     name.addEventListener("click", () => deps.onOpen(id));
-    nameCell.appendChild(name);
+    nameCell.append(dot, name);
     const mix = el("td", "");
     const cost = el("td", "compare-cell-cost");
     const ff = el("td", "");
     const params = el("td", "compare-cell-params");
+    const paramVal = el("span", "compare-param-val");
+    const barTrack = el("span", "compare-bar");
+    const bar = el("span", "compare-bar-fill");
+    bar.style.background = archAccent(id);
+    barTrack.appendChild(bar);
+    params.append(paramVal, barTrack);
     const idea = el("td", "compare-cell-idea");
     tr.append(nameCell, mix, cost, ff, params, idea);
     tbody.appendChild(tr);
-    rows.push({ id, name, mix, cost, ff, params, idea });
+    rows.push({ id, name, mix, cost, ff, paramVal, bar, idea });
   }
 
   table.append(thead, tbody);
@@ -118,21 +138,30 @@ export function createComparePage(deps: CompareDeps): ComparePage {
   render();
 
   // Live parameter counts: fetch each manifest (no weights). "…" while
-  // pending, formatted count on success, "—" on failure (never faked).
-  for (const row of rows) row.params.textContent = "…";
+  // pending, formatted count on success, "—" on failure (never faked). Bars
+  // are scaled to the largest model once every count has settled.
+  for (const row of rows) row.paramVal.textContent = "…";
   const ready = Promise.all(
     rows.map(async (row) => {
       try {
         const res = await fetchFn(`${base}/models/${row.id}/manifest.json`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const manifest = (await res.json()) as Manifest;
-        row.params.textContent = formatParams(totalParams(manifest));
+        const n = totalParams(manifest);
+        row.paramVal.textContent = formatParams(n);
+        return n;
       } catch (err) {
         console.error(`compare: param count for "${row.id}" failed:`, err);
-        row.params.textContent = "—";
+        row.paramVal.textContent = "—";
+        return 0;
       }
     }),
-  ).then(() => {});
+  ).then((counts) => {
+    const max = Math.max(1, ...counts);
+    rows.forEach((row, i) => {
+      row.bar.style.width = `${Math.round((counts[i] / max) * 100)}%`;
+    });
+  });
 
   // Locale changes are handled by the router remounting this page (same as
   // the landing and arch pages), so no self-subscription here.

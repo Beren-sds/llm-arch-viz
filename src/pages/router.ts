@@ -198,6 +198,7 @@ export function createRouter(deps: RouterDeps): { dispose(): void } {
       const page = createArchPage({
         container,
         i18n,
+        archId: arch,
         titleKey: def.titleKey,
         tokens: def.tokens,
         task: deps.task,

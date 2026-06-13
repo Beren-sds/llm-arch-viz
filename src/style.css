@@ -3,6 +3,13 @@ body {
   margin: 0;
   height: 100%;
   background: #0b0e14;
+  /* Refined UI stack (Inter when present), with CJK fallbacks for zh. Fixes
+     the previous serif default — body had no font-family. */
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 #app {
@@ -824,5 +831,162 @@ button.viz-tok.is-data:hover {
     width: auto;
     max-width: none;
     max-height: 40vh;
+  }
+}
+
+/* ===== Per-architecture identity + style polish ========================== */
+
+/* Glyphs inherit the accent via currentColor. */
+.viz-glyph,
+.landing-card-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.viz-glyph {
+  width: 20px;
+  height: 20px;
+  color: var(--arch-accent, #7fb4ff);
+}
+.viz-glyph svg,
+.landing-card-glyph svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* --- Landing cards: accent top-rule + mechanism glyph ------------------- */
+.landing-card {
+  border-top: 2px solid transparent;
+  position: relative;
+}
+.landing-card.is-live {
+  border-top-color: color-mix(in srgb, var(--accent, #7fb4ff) 60%, transparent);
+}
+.landing-card.is-live:hover {
+  border-color: var(--accent, #3f6fb0);
+  border-top-color: var(--accent, #3f6fb0);
+}
+.landing-card-glyph {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 2px;
+  color: var(--accent, #7fb4ff);
+}
+.landing-card.is-soon .landing-card-glyph {
+  color: #4b5468;
+}
+
+/* --- Landing hero ambiance (static, reduced-motion safe) ---------------- */
+.landing {
+  position: relative;
+  isolation: isolate;
+}
+.landing::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 42% at 50% 0%, rgba(127, 180, 255, 0.1), transparent 70%),
+    radial-gradient(50% 40% at 80% 10%, rgba(201, 182, 255, 0.08), transparent 70%),
+    linear-gradient(rgba(127, 140, 180, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127, 140, 180, 0.04) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    100% 100%,
+    44px 44px,
+    44px 44px;
+  -webkit-mask-image: radial-gradient(120% 80% at 50% 0%, #000 35%, transparent 80%);
+  mask-image: radial-gradient(120% 80% at 50% 0%, #000 35%, transparent 80%);
+}
+
+/* --- Arch page: topbar accent stripe + accent chapter marker ------------ */
+.viz-topbar {
+  border-bottom: 1px solid color-mix(in srgb, var(--arch-accent, #7fb4ff) 45%, rgba(120, 140, 180, 0.14));
+}
+.viz-chapter-item.is-current {
+  background: color-mix(in srgb, var(--arch-accent, #7fb4ff) 16%, transparent);
+  color: #eef2fa;
+  box-shadow: inset 2px 0 0 var(--arch-accent, #7fb4ff);
+}
+
+/* --- Narration: chapter title + progress bar --------------------------- */
+.viz-narr-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.viz-narr-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: var(--arch-accent, #9fd0ff);
+  white-space: nowrap;
+}
+.viz-progress {
+  flex: 1;
+  height: 3px;
+  background: #232a39;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.viz-progress-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  background: var(--arch-accent, #7fb4ff);
+  transition: width 0.35s ease;
+}
+
+/* --- Compare: accent dots, name colour, relative size bars, grouping ---- */
+.compare-cell-arch {
+  white-space: nowrap;
+}
+.compare-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.compare-cell-params {
+  text-align: left;
+}
+.compare-param-val {
+  display: block;
+  color: #7fd962;
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.compare-bar {
+  display: block;
+  width: 96px;
+  max-width: 100%;
+  height: 4px;
+  margin-top: 5px;
+  background: #1d2433;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.compare-bar-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  transition: width 0.45s ease;
+}
+.compare-row.compare-group-end td {
+  border-bottom: 2px solid #2c3548;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viz-progress-fill,
+  .compare-bar-fill {
+    transition: none;
   }
 }

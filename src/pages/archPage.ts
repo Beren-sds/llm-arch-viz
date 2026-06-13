@@ -33,6 +33,7 @@ import type { I18n } from "../i18n/i18n";
 import type { SceneController } from "../scenes/sceneController";
 import { button, el } from "./dom";
 import { createInputEditor, type InputEditor, type TaskShape } from "./inputEditor";
+import { archAccent, archGlyph } from "./archMeta";
 
 declare global {
   interface Window {
@@ -49,6 +50,8 @@ export interface ArchPageDeps {
   /** Where the page mounts (its own canvas + chrome go inside). */
   container: HTMLElement;
   i18n: I18n;
+  /** Architecture id (drives the signature accent + glyph). */
+  archId?: string;
   /** i18n key for the scene title shown in the top bar. */
   titleKey: string;
   /** The input sequence fed to the model (full-length). */
@@ -99,6 +102,9 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
 
   // ---- DOM scaffold ---------------------------------------------------------
   const root = el("div", "viz-page");
+  // Signature accent for this architecture, used by the topbar stripe, the
+  // current-chapter marker, and the narration title/progress bar.
+  root.style.setProperty("--arch-accent", archAccent(deps.archId ?? ""));
   const canvasHost = el("div", "viz-canvas");
   root.appendChild(canvasHost);
   container.appendChild(root);
@@ -144,13 +150,15 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
   const homeBtn = button("viz-home");
   if (deps.onHome) homeBtn.addEventListener("click", deps.onHome);
   else homeBtn.hidden = true;
+  const glyphEl = el("span", "viz-glyph");
+  glyphEl.innerHTML = archGlyph(deps.archId ?? "");
   const titleEl = el("div", "viz-title");
   const counterEl = el("div", "viz-counter");
   const langBtn = button("viz-lang");
   langBtn.addEventListener("click", () => {
     i18n.setLocale(i18n.locale === "en" ? "zh" : "en");
   });
-  topbar.append(homeBtn, titleEl, counterEl, langBtn);
+  topbar.append(homeBtn, glyphEl, titleEl, counterEl, langBtn);
 
   // ---- chrome: chapter sidebar ----------------------------------------------
   const sidebar = el("nav", "viz-sidebar");
@@ -170,6 +178,12 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
 
   // ---- chrome: narration + transport ----------------------------------------
   const narration = el("div", "viz-narration");
+  const narrHead = el("div", "viz-narr-head");
+  const narrTitle = el("div", "viz-narr-title");
+  const progress = el("div", "viz-progress");
+  const progressFill = el("i", "viz-progress-fill");
+  progress.appendChild(progressFill);
+  narrHead.append(narrTitle, progress);
   const bodyEl = el("p", "viz-narration-body");
   const ctrlRow = el("div", "viz-controls");
   const prevBtn = button("viz-btn");
@@ -198,7 +212,7 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
     updatePlayLabel();
   });
   sliderRow.append(sliderLabel, slider, sliderVal);
-  narration.append(bodyEl, ctrlRow, sliderRow);
+  narration.append(narrHead, bodyEl, ctrlRow, sliderRow);
 
   root.append(topbar, sidebar, narration);
 
@@ -302,6 +316,8 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
     }
 
     const ch = chapters.get(current);
+    narrTitle.textContent = i18n.t(titleKeyOf(ch));
+    progressFill.style.width = `${((current + 1) / chapters.count) * 100}%`;
     bodyEl.textContent = i18n.t(ch.narrationKey);
     // Restart the fade-up so the narration animates in on each chapter change.
     bodyEl.classList.remove("is-fading");
