@@ -32,6 +32,15 @@ export class OrbitControls {
     return this.inner.target;
   }
 
+  /**
+   * Subscribe to the user grabbing the controls (three's 'start' event:
+   * pointer-down / wheel / touch). The camera-tour handoff wires this to
+   * TourPlayer.cancel() so a user drag interrupts an in-flight fly-to.
+   */
+  onStart(cb: () => void): void {
+    this.inner.addEventListener("start", cb);
+  }
+
   /** Advance damping/inertia; call once per frame from the render loop. */
   update(): void {
     this.inner.update();

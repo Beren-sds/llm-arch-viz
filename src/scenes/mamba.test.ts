@@ -15,7 +15,15 @@ import { parseWeights, type Manifest } from "../compute/loader";
 import { mambaDimsFrom, mambaForward } from "../compute/mamba";
 import { MapRecorder } from "../compute/recorder";
 import type { GoldenFile } from "../compute/golden";
-import { buildMambaScene, MAMBA_ANCHOR_NAMES, MAMBA_SEQ_LEN } from "./mamba";
+import { I18n, type Locale } from "../i18n/i18n";
+import en from "../i18n/en.json";
+import zh from "../i18n/zh.json";
+import {
+  buildMambaChapters,
+  buildMambaScene,
+  MAMBA_ANCHOR_NAMES,
+  MAMBA_SEQ_LEN,
+} from "./mamba";
 
 function loadArtifacts(): { manifest: Manifest; weights: ReturnType<typeof parseWeights> } {
   const dir = new URL("../../public/models/mamba/", import.meta.url);
@@ -158,5 +166,72 @@ describe("buildMambaScene (real manifest + weights)", () => {
     expect(() => built.dispose()).not.toThrow();
     expect(scene.children).toHaveLength(0);
     expect(() => built.dispose()).not.toThrow(); // idempotent
+  });
+});
+
+describe("buildMambaChapters (real scene + real i18n dicts)", () => {
+  const { built } = build();
+  const i18n = new I18n({ en, zh } satisfies Record<Locale, Record<string, string>>);
+  const reg = buildMambaChapters(built, i18n);
+
+  const EXPECTED_IDS = [
+    "intro",
+    "embed",
+    "block",
+    "conv",
+    "selection",
+    "scan",
+    "gate",
+    "layer2",
+    "readout",
+    "recap",
+  ];
+
+  it("registers the 10 chapters in order", () => {
+    expect(reg.count).toBe(EXPECTED_IDS.length);
+    expect(EXPECTED_IDS.map((_, i) => reg.get(i).id)).toEqual(EXPECTED_IDS);
+  });
+
+  it("every chapter camera is a finite keyframe drawn from the scene anchors", () => {
+    const anchorKfs = new Set([...built.anchors.values()]);
+    for (let i = 0; i < reg.count; i++) {
+      const ch = reg.get(i);
+      expect([...ch.camera.pos, ...ch.camera.target].every(Number.isFinite), ch.id).toBe(true);
+      expect(anchorKfs.has(ch.camera), ch.id).toBe(true);
+    }
+  });
+
+  it("the scan chapter carries a looping token-by-token stepToken timeline", () => {
+    const scan = reg.byId("scan");
+    expect(scan?.timeline).toBeDefined();
+    const tl = scan!.timeline!;
+    expect(tl.loop).toBe(true);
+    expect(tl.steps).toHaveLength(MAMBA_SEQ_LEN);
+    expect(tl.steps.map((s) => (s.kind === "stepToken" ? s.token : -1))).toEqual(
+      Array.from({ length: MAMBA_SEQ_LEN }, (_, t) => t),
+    );
+  });
+
+  it("only the scan chapter has a timeline", () => {
+    for (let i = 0; i < reg.count; i++) {
+      const ch = reg.get(i);
+      if (ch.id !== "scan") expect(ch.timeline, ch.id).toBeUndefined();
+    }
+  });
+
+  it("every sidebar title key exists in BOTH locales (no missing-key console.error at render)", () => {
+    for (let i = 0; i < reg.count; i++) {
+      const titleKey = reg.get(i).narrationKey.replace(/\.body$/, ".title");
+      expect(i18n.missingLocales(titleKey), titleKey).toEqual([]);
+    }
+  });
+
+  it("every focus-highlight names a real view (binding.setHighlight won't throw)", () => {
+    for (let i = 0; i < reg.count; i++) {
+      const ch = reg.get(i);
+      for (const name of ch.highlights) {
+        expect(built.views.has(name), `chapter "${ch.id}" highlight "${name}"`).toBe(true);
+      }
+    }
   });
 });

@@ -43,8 +43,10 @@ import {
 } from "../engine/labels";
 import type { Picker } from "../engine/picking";
 import type { CameraKeyframe } from "../engine/cameraTour";
-import type { SceneBinding } from "../walkthrough/timeline";
+import type { SceneBinding, TimelineSpec, TimelineStep } from "../walkthrough/timeline";
+import { ChapterRegistry, type Chapter } from "../walkthrough/chapters";
 import type { I18n } from "../i18n/i18n";
+import type { SceneController } from "./sceneController";
 
 /** Sequence length the layout is built for (selective-copying training T). */
 export const MAMBA_SEQ_LEN = 21;
@@ -662,4 +664,96 @@ export function buildMambaScene(deps: MambaSceneDeps): MambaScene {
     labelObjects,
     dispose,
   };
+}
+
+// ----- guided tour -----------------------------------------------------------
+
+/**
+ * The ~10-chapter Mamba tour over a built scene. Each chapter flies to a
+ * named anchor and focuses a set of tensors; the scan chapter additionally
+ * carries a token-by-token timeline. That timeline uses ONLY stepToken
+ * steps (no highlight/focus), so it never touches highlight/dim — the page
+ * driver can keep the chapter's static focus applied while it plays without
+ * violating timeline.ts's exclusive-ownership contract.
+ *
+ * Narration bodies are `mamba.ch.<id>.body`; the page derives the sidebar
+ * title as the same key with `.body` → `.title`. The registry validates
+ * every narrationKey against BOTH locales at construction (a key missing in
+ * either locale is a hard error), so an authored-in-one-locale slip fails
+ * the tests, not the viewer.
+ */
+export function buildMambaChapters(scene: SceneController, i18n: I18n): ChapterRegistry {
+  const at = (anchor: string): CameraKeyframe => {
+    const kf = scene.anchors.get(anchor);
+    if (!kf) throw new Error(`mamba chapters: scene has no anchor "${anchor}"`);
+    return kf;
+  };
+  const spine = (layer: number): string[] =>
+    ["norm", "in_proj", "conv", "x_proj", "delta", "ssm", "gate", "out_proj"].map(
+      (m) => `layer${layer}.${m}.out`,
+    );
+  // Every layer-0 h snapshot, so the scan chapter's focus never dims
+  // whichever one showHState has made visible (they are coplanar; one shows).
+  const hSnaps0 = Array.from({ length: MAMBA_SEQ_LEN }, (_, t) => `layer0.ssm.h.t${t}`);
+  const scanSteps: TimelineStep[] = Array.from({ length: MAMBA_SEQ_LEN }, (_, t) => ({
+    kind: "stepToken",
+    token: t,
+    durationMs: 450,
+  }));
+  const scanTimeline: TimelineSpec = { steps: scanSteps, loop: true };
+
+  const chapters: Chapter[] = [
+    { id: "intro", camera: at("home"), highlights: [], narrationKey: "mamba.ch.intro.body" },
+    {
+      id: "embed",
+      camera: at("embed"),
+      highlights: ["embed.out", "embedding.weight"],
+      narrationKey: "mamba.ch.embed.body",
+    },
+    { id: "block", camera: at("block0"), highlights: spine(0), narrationKey: "mamba.ch.block.body" },
+    {
+      id: "conv",
+      camera: at("conv0"),
+      highlights: ["layer0.conv.out", "blocks.0.conv1d.weight", "blocks.0.conv1d.bias"],
+      narrationKey: "mamba.ch.conv.body",
+    },
+    {
+      id: "selection",
+      camera: at("selection0"),
+      highlights: [
+        "layer0.x_proj.out",
+        "layer0.delta.out",
+        "blocks.0.x_proj.weight",
+        "blocks.0.dt_proj.weight",
+      ],
+      narrationKey: "mamba.ch.selection.body",
+    },
+    {
+      id: "scan",
+      camera: at("scan0"),
+      highlights: ["layer0.delta.out", "layer0.ssm.out", "blocks.0.A_log", "blocks.0.D", ...hSnaps0],
+      narrationKey: "mamba.ch.scan.body",
+      timeline: scanTimeline,
+    },
+    {
+      id: "gate",
+      camera: at("gate0"),
+      highlights: ["layer0.ssm.out", "layer0.gate.out", "layer0.out_proj.out"],
+      narrationKey: "mamba.ch.gate.body",
+    },
+    {
+      id: "layer2",
+      camera: at("block1"),
+      highlights: spine(1),
+      narrationKey: "mamba.ch.layer2.body",
+    },
+    {
+      id: "readout",
+      camera: at("head"),
+      highlights: ["final_norm.out", "head.logits", "lm_head.weight", "final_norm.weight"],
+      narrationKey: "mamba.ch.readout.body",
+    },
+    { id: "recap", camera: at("home"), highlights: [], narrationKey: "mamba.ch.recap.body" },
+  ];
+  return new ChapterRegistry("mamba", chapters, i18n);
 }

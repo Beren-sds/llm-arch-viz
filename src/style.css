@@ -91,3 +91,185 @@ body {
   pointer-events: none;
   z-index: 10;
 }
+
+/* ===== Arch page chrome (pages/archPage.ts) ================================ */
+
+.viz-page {
+  position: absolute;
+  inset: 0;
+  font: 14px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #e6e8ee;
+}
+
+/* The 3D canvas sits behind every panel and keeps pointer events (orbit/hover). */
+.viz-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Shared overlay-panel look: translucent, blurred, hairline border. */
+.viz-topbar,
+.viz-sidebar,
+.viz-narration {
+  position: absolute;
+  z-index: 5;
+  background: rgba(15, 19, 28, 0.82);
+  border: 1px solid #232a39;
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+}
+
+.viz-topbar {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 46px;
+  border-width: 0 0 1px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+}
+
+.viz-title {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #d7e3ff;
+}
+
+.viz-counter {
+  color: #9aa3b5;
+  font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.viz-lang {
+  margin-left: auto;
+}
+
+.viz-sidebar {
+  top: 62px;
+  left: 14px;
+  width: 196px;
+  max-height: calc(100vh - 76px);
+  overflow-y: auto;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.viz-sidebar-h {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: #707a8e;
+  margin: 2px 4px 8px;
+}
+
+.viz-chapter-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-chapter-item {
+  width: 100%;
+  text-align: left;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #b9c0cf;
+  font: inherit;
+  cursor: pointer;
+}
+
+.viz-chapter-item:hover {
+  background: rgba(127, 180, 255, 0.1);
+  color: #e6e8ee;
+}
+
+.viz-chapter-item.is-current {
+  background: rgba(127, 180, 255, 0.18);
+  color: #d7e3ff;
+  box-shadow: inset 2px 0 0 #7fb4ff;
+}
+
+.viz-narration {
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  width: min(680px, calc(100vw - 240px));
+  border-radius: 10px;
+  padding: 14px 16px 12px;
+}
+
+.viz-narration-body {
+  margin: 0 0 10px;
+  color: #dde2ec;
+}
+
+.viz-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-btn,
+.viz-lang {
+  border: 1px solid #2f3848;
+  border-radius: 6px;
+  background: #1a2030;
+  color: #e6e8ee;
+  font: inherit;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.viz-btn:hover:not(:disabled),
+.viz-lang:hover {
+  background: #232c3f;
+  border-color: #3a455a;
+}
+
+.viz-play {
+  min-width: 78px;
+}
+
+.viz-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.viz-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #232a39;
+}
+
+.viz-slider-row.is-hidden {
+  display: none;
+}
+
+.viz-slider-label {
+  color: #9aa3b5;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.viz-slider {
+  flex: 1;
+  accent-color: #7fb4ff;
+}
+
+.viz-slider-val {
+  min-width: 1.6em;
+  text-align: right;
+  color: #7fb4ff;
+  font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
