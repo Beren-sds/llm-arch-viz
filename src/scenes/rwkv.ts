@@ -39,7 +39,17 @@ const LANE_GAP = 10;
 const FLANK_GAP = 7;
 const LABEL_RISE = 4.2;
 
-export const RWKV_ANCHOR_NAMES = ["home", "embed", "timemix0", "channelmix0", "head"] as const;
+export const RWKV_ANCHOR_NAMES = [
+  "home",
+  "embed",
+  "block0",
+  "rkv0",
+  "wkv0",
+  "timeout0",
+  "channelmix0",
+  "block1",
+  "head",
+] as const;
 
 export interface LabelFactory {
   label(text: string, opts?: LabelOptions): THREE.Object3D;
@@ -328,16 +338,43 @@ export function buildRwkvScene(deps: RwkvSceneDeps): SceneController {
   const allRect = union(...rects.values());
   const cameraHome = frameRect(pad(allRect, 10), false);
   const anchors = new Map<string, CameraKeyframe>();
+  const lyr = (i: number, ...names: string[]): Rect => union(...names.map((n) => r(`layer${i}.${n}`)));
   anchors.set("home", cameraHome);
   anchors.set("embed", frameRect(pad(union(r("embed.out"), r("embedding.weight")), 7), true));
+  anchors.set("block0", frameRect(pad(lyr(0, "ln1.out", "att.out", "ln2.out", "ffn.out"), 7), true));
   anchors.set(
-    "timemix0",
-    frameRect(pad(union(r("layer0.att.k"), r("layer0.att.wkv"), r("layer0.att.out")), 6), true),
+    "rkv0",
+    frameRect(
+      pad(
+        union(
+          r("layer0.att.r"),
+          r("layer0.att.k"),
+          r("layer0.att.v"),
+          r("att.0.receptance.weight"),
+          r("att.0.key.weight"),
+          r("att.0.value.weight"),
+        ),
+        6,
+      ),
+      true,
+    ),
+  );
+  anchors.set(
+    "wkv0",
+    frameRect(
+      pad(union(r("layer0.att.k"), r("layer0.att.v"), r("layer0.att.wkv"), r("att.0.time_decay"), r("att.0.time_first")), 6),
+      true,
+    ),
+  );
+  anchors.set(
+    "timeout0",
+    frameRect(pad(union(r("layer0.att.r"), r("layer0.att.wkv"), r("layer0.att.out"), r("att.0.output.weight")), 6), true),
   );
   anchors.set(
     "channelmix0",
     frameRect(pad(union(r("layer0.ffn.k"), r("layer0.ffn.out"), r("ffn.0.key.weight")), 6), true),
   );
+  anchors.set("block1", frameRect(pad(lyr(1, "ln1.out", "att.out", "ln2.out", "ffn.out"), 7), true));
   anchors.set("head", frameRect(pad(union(r("final_norm.out"), r("head.logits"), r("head.weight")), 7), true));
 
   // -- compute plumbing ---------------------------------------------------------
@@ -432,24 +469,47 @@ export function buildRwkvChapters(scene: SceneController, i18n: I18n): ChapterRe
       narrationKey: "rwkv.ch.embed.body",
     },
     {
-      id: "timemix",
-      camera: at("timemix0"),
+      id: "block",
+      camera: at("block0"),
+      highlights: ["layer0.ln1.out", "layer0.att.out", "layer0.ln2.out", "layer0.ffn.out"],
+      narrationKey: "rwkv.ch.block.body",
+    },
+    {
+      id: "rkv",
+      camera: at("rkv0"),
       highlights: [
         "layer0.att.r",
         "layer0.att.k",
         "layer0.att.v",
-        "layer0.att.wkv",
-        "layer0.att.out",
-        "att.0.time_decay",
-        "att.0.time_first",
+        "att.0.receptance.weight",
+        "att.0.key.weight",
+        "att.0.value.weight",
       ],
-      narrationKey: "rwkv.ch.timemix.body",
+      narrationKey: "rwkv.ch.rkv.body",
+    },
+    {
+      id: "wkv",
+      camera: at("wkv0"),
+      highlights: ["layer0.att.k", "layer0.att.v", "layer0.att.wkv", "att.0.time_decay", "att.0.time_first"],
+      narrationKey: "rwkv.ch.wkv.body",
+    },
+    {
+      id: "timeout",
+      camera: at("timeout0"),
+      highlights: ["layer0.att.r", "layer0.att.wkv", "layer0.att.out", "att.0.output.weight"],
+      narrationKey: "rwkv.ch.timeout.body",
     },
     {
       id: "channelmix",
       camera: at("channelmix0"),
       highlights: ["layer0.ffn.k", "layer0.ffn.out", "ffn.0.key.weight", "ffn.0.value.weight"],
       narrationKey: "rwkv.ch.channelmix.body",
+    },
+    {
+      id: "layer2",
+      camera: at("block1"),
+      highlights: ["layer1.ln1.out", "layer1.att.out", "layer1.ln2.out", "layer1.ffn.out"],
+      narrationKey: "rwkv.ch.layer2.body",
     },
     {
       id: "readout",

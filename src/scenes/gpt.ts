@@ -53,7 +53,18 @@ const FLANK_GAP = 7;
 const LABEL_RISE = 4.2;
 
 /** Anchor names the GPT chapters fly to (all present in `anchors`). */
-export const GPT_ANCHOR_NAMES = ["home", "embed", "attn0", "mlp0", "head"] as const;
+export const GPT_ANCHOR_NAMES = [
+  "home",
+  "embed",
+  "block0",
+  "qkv0",
+  "scores0",
+  "weights0",
+  "attnout0",
+  "mlp0",
+  "block1",
+  "head",
+] as const;
 
 // ----- public surface -------------------------------------------------------
 
@@ -381,26 +392,17 @@ export function buildGptScene(deps: GptSceneDeps): SceneController {
   const allRect = union(...rects.values());
   const cameraHome = frameRect(pad(allRect, 10), false);
   const anchors = new Map<string, CameraKeyframe>();
+  const lyr = (i: number, ...names: string[]): Rect => union(...names.map((n) => r(`layer${i}.${n}`)));
   anchors.set("home", cameraHome);
   anchors.set("embed", frameRect(pad(union(r("embed.out"), r("tok_embedding.weight"), r("pos_embedding.weight")), 7), true));
-  anchors.set(
-    "attn0",
-    frameRect(
-      pad(union(r("layer0.attn.q"), r("layer0.attn.scores"), r("layer0.attn.weights"), r("layer0.attn.out")), 6),
-      true,
-    ),
-  );
-  anchors.set(
-    "mlp0",
-    frameRect(
-      pad(union(r("layer0.mlp.fc"), r("layer0.mlp.act"), r("layer0.mlp.proj"), r("mlps.0.fc.weight")), 6),
-      true,
-    ),
-  );
-  anchors.set(
-    "head",
-    frameRect(pad(union(r("final_norm.out"), r("head.logits"), r("lm_head.weight")), 7), true),
-  );
+  anchors.set("block0", frameRect(pad(lyr(0, "ln1.out", "attn.out", "ln2.out", "mlp.proj", "attn.weights", "mlp.fc"), 7), true));
+  anchors.set("qkv0", frameRect(pad(union(r("layer0.attn.q"), r("layer0.attn.k"), r("layer0.attn.v"), r("attns.0.qkv_proj.weight")), 6), true));
+  anchors.set("scores0", frameRect(pad(union(r("layer0.attn.q"), r("layer0.attn.k"), r("layer0.attn.scores")), 6), true));
+  anchors.set("weights0", frameRect(pad(union(r("layer0.attn.scores"), r("layer0.attn.weights")), 6), true));
+  anchors.set("attnout0", frameRect(pad(union(r("layer0.attn.weights"), r("layer0.attn.v"), r("layer0.attn.out"), r("attns.0.out_proj.weight")), 6), true));
+  anchors.set("mlp0", frameRect(pad(union(r("layer0.mlp.fc"), r("layer0.mlp.act"), r("layer0.mlp.proj"), r("mlps.0.fc.weight")), 6), true));
+  anchors.set("block1", frameRect(pad(lyr(1, "ln1.out", "attn.out", "ln2.out", "mlp.proj", "attn.weights", "mlp.fc"), 7), true));
+  anchors.set("head", frameRect(pad(union(r("final_norm.out"), r("head.logits"), r("lm_head.weight")), 7), true));
 
   // -- compute plumbing -------------------------------------------------------
 
@@ -505,19 +507,34 @@ export function buildGptChapters(scene: SceneController, i18n: I18n): ChapterReg
       narrationKey: "gpt.ch.embed.body",
     },
     {
-      id: "attention",
-      camera: at("attn0"),
-      highlights: [
-        "layer0.attn.q",
-        "layer0.attn.k",
-        "layer0.attn.v",
-        "layer0.attn.scores",
-        "layer0.attn.weights",
-        "layer0.attn.out",
-        "attns.0.qkv_proj.weight",
-        "attns.0.out_proj.weight",
-      ],
-      narrationKey: "gpt.ch.attention.body",
+      id: "block",
+      camera: at("block0"),
+      highlights: ["layer0.ln1.out", "layer0.attn.out", "layer0.ln2.out", "layer0.mlp.proj"],
+      narrationKey: "gpt.ch.block.body",
+    },
+    {
+      id: "qkv",
+      camera: at("qkv0"),
+      highlights: ["layer0.attn.q", "layer0.attn.k", "layer0.attn.v", "attns.0.qkv_proj.weight"],
+      narrationKey: "gpt.ch.qkv.body",
+    },
+    {
+      id: "scores",
+      camera: at("scores0"),
+      highlights: ["layer0.attn.q", "layer0.attn.k", "layer0.attn.scores"],
+      narrationKey: "gpt.ch.scores.body",
+    },
+    {
+      id: "weights",
+      camera: at("weights0"),
+      highlights: ["layer0.attn.scores", "layer0.attn.weights"],
+      narrationKey: "gpt.ch.weights.body",
+    },
+    {
+      id: "attnout",
+      camera: at("attnout0"),
+      highlights: ["layer0.attn.weights", "layer0.attn.v", "layer0.attn.out", "attns.0.out_proj.weight"],
+      narrationKey: "gpt.ch.attnout.body",
     },
     {
       id: "mlp",
@@ -530,6 +547,12 @@ export function buildGptChapters(scene: SceneController, i18n: I18n): ChapterReg
         "mlps.0.proj.weight",
       ],
       narrationKey: "gpt.ch.mlp.body",
+    },
+    {
+      id: "layer2",
+      camera: at("block1"),
+      highlights: ["layer1.ln1.out", "layer1.attn.out", "layer1.ln2.out", "layer1.mlp.proj"],
+      narrationKey: "gpt.ch.layer2.body",
     },
     {
       id: "readout",

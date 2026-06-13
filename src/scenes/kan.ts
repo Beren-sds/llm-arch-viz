@@ -39,7 +39,20 @@ const LANE_GAP = 10;
 const FLANK_GAP = 7;
 const LABEL_RISE = 4.2;
 
-export const KAN_ANCHOR_NAMES = ["home", "embed", "attn0", "kan0", "head"] as const;
+export const KAN_ANCHOR_NAMES = [
+  "home",
+  "embed",
+  "block0",
+  "qkv0",
+  "scores0",
+  "weights0",
+  "attnout0",
+  "rbf0",
+  "spline0",
+  "kanout0",
+  "block1",
+  "head",
+] as const;
 
 export interface LabelFactory {
   label(text: string, opts?: LabelOptions): THREE.Object3D;
@@ -281,10 +294,18 @@ export function buildKanScene(deps: KanSceneDeps): SceneController {
   const allRect = union(...rects.values());
   const cameraHome = frameRect(pad(allRect, 10), false);
   const anchors = new Map<string, CameraKeyframe>();
+  const lyr = (i: number, ...names: string[]): Rect => union(...names.map((n) => r(`layer${i}.${n}`)));
   anchors.set("home", cameraHome);
   anchors.set("embed", frameRect(pad(union(r("embed.out"), r("tok_embedding.weight"), r("pos_embedding.weight")), 7), true));
-  anchors.set("attn0", frameRect(pad(union(r("layer0.attn.q"), r("layer0.attn.weights"), r("layer0.attn.out")), 6), true));
-  anchors.set("kan0", frameRect(pad(union(r("layer0.kan.rbf"), r("layer0.kan.spline"), r("layer0.kan.out")), 6), true));
+  anchors.set("block0", frameRect(pad(lyr(0, "ln1.out", "attn.out", "ln2.out", "kan.out"), 7), true));
+  anchors.set("qkv0", frameRect(pad(union(r("layer0.attn.q"), r("layer0.attn.k"), r("layer0.attn.v"), r("attns.0.qkv_proj.weight")), 6), true));
+  anchors.set("scores0", frameRect(pad(union(r("layer0.attn.q"), r("layer0.attn.k"), r("layer0.attn.scores")), 6), true));
+  anchors.set("weights0", frameRect(pad(union(r("layer0.attn.scores"), r("layer0.attn.weights")), 6), true));
+  anchors.set("attnout0", frameRect(pad(union(r("layer0.attn.weights"), r("layer0.attn.v"), r("layer0.attn.out"), r("attns.0.out_proj.weight")), 6), true));
+  anchors.set("rbf0", frameRect(pad(union(r("layer0.ln2.out"), r("layer0.kan.rbf")), 6), true));
+  anchors.set("spline0", frameRect(pad(union(r("layer0.kan.rbf"), r("kans.0.spline_linear.weight"), r("layer0.kan.spline")), 6), true));
+  anchors.set("kanout0", frameRect(pad(union(r("layer0.kan.spline"), r("layer0.kan.base"), r("kans.0.base_linear.weight"), r("layer0.kan.out")), 6), true));
+  anchors.set("block1", frameRect(pad(lyr(1, "ln1.out", "attn.out", "ln2.out", "kan.out"), 7), true));
   anchors.set("head", frameRect(pad(union(r("final_norm.out"), r("head.logits"), r("lm_head.weight")), 7), true));
 
   // -- compute ------------------------------------------------------------------
@@ -374,22 +395,58 @@ export function buildKanChapters(scene: SceneController, i18n: I18n): ChapterReg
       narrationKey: "kan.ch.embed.body",
     },
     {
-      id: "attention",
-      camera: at("attn0"),
-      highlights: ["layer0.attn.scores", "layer0.attn.weights", "layer0.attn.out"],
-      narrationKey: "kan.ch.attention.body",
+      id: "block",
+      camera: at("block0"),
+      highlights: ["layer0.ln1.out", "layer0.attn.out", "layer0.ln2.out", "layer0.kan.out"],
+      narrationKey: "kan.ch.block.body",
     },
     {
-      id: "kan",
-      camera: at("kan0"),
-      highlights: [
-        "layer0.kan.rbf",
-        "layer0.kan.spline",
-        "layer0.kan.base",
-        "layer0.kan.out",
-        "kans.0.spline_linear.weight",
-      ],
-      narrationKey: "kan.ch.kan.body",
+      id: "qkv",
+      camera: at("qkv0"),
+      highlights: ["layer0.attn.q", "layer0.attn.k", "layer0.attn.v", "attns.0.qkv_proj.weight"],
+      narrationKey: "kan.ch.qkv.body",
+    },
+    {
+      id: "scores",
+      camera: at("scores0"),
+      highlights: ["layer0.attn.q", "layer0.attn.k", "layer0.attn.scores"],
+      narrationKey: "kan.ch.scores.body",
+    },
+    {
+      id: "weights",
+      camera: at("weights0"),
+      highlights: ["layer0.attn.scores", "layer0.attn.weights"],
+      narrationKey: "kan.ch.weights.body",
+    },
+    {
+      id: "attnout",
+      camera: at("attnout0"),
+      highlights: ["layer0.attn.weights", "layer0.attn.v", "layer0.attn.out", "attns.0.out_proj.weight"],
+      narrationKey: "kan.ch.attnout.body",
+    },
+    {
+      id: "rbf",
+      camera: at("rbf0"),
+      highlights: ["layer0.ln2.out", "layer0.kan.rbf"],
+      narrationKey: "kan.ch.rbf.body",
+    },
+    {
+      id: "spline",
+      camera: at("spline0"),
+      highlights: ["layer0.kan.rbf", "kans.0.spline_linear.weight", "layer0.kan.spline"],
+      narrationKey: "kan.ch.spline.body",
+    },
+    {
+      id: "kanout",
+      camera: at("kanout0"),
+      highlights: ["layer0.kan.spline", "layer0.kan.base", "kans.0.base_linear.weight", "layer0.kan.out"],
+      narrationKey: "kan.ch.kanout.body",
+    },
+    {
+      id: "layer2",
+      camera: at("block1"),
+      highlights: ["layer1.ln1.out", "layer1.attn.out", "layer1.ln2.out", "layer1.kan.out"],
+      narrationKey: "kan.ch.layer2.body",
     },
     {
       id: "readout",

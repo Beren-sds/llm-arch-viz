@@ -136,7 +136,18 @@ describe("buildGptChapters (real scene + real i18n dicts)", () => {
   const i18n = new I18n({ en, zh } satisfies Record<Locale, Record<string, string>>);
   const reg = buildGptChapters(built, i18n);
 
-  const EXPECTED_IDS = ["intro", "embed", "attention", "mlp", "readout"];
+  const EXPECTED_IDS = [
+    "intro",
+    "embed",
+    "block",
+    "qkv",
+    "scores",
+    "weights",
+    "attnout",
+    "mlp",
+    "layer2",
+    "readout",
+  ];
 
   it("registers the 5 chapters in order", () => {
     expect(reg.count).toBe(EXPECTED_IDS.length);

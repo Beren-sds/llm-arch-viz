@@ -92,7 +92,17 @@ describe("buildRwkvChapters (real scene + real i18n dicts)", () => {
   const { built } = build();
   const i18n = new I18n({ en, zh } satisfies Record<Locale, Record<string, string>>);
   const reg = buildRwkvChapters(built, i18n);
-  const EXPECTED_IDS = ["intro", "embed", "timemix", "channelmix", "readout"];
+  const EXPECTED_IDS = [
+    "intro",
+    "embed",
+    "block",
+    "rkv",
+    "wkv",
+    "timeout",
+    "channelmix",
+    "layer2",
+    "readout",
+  ];
 
   it("registers the chapters in order", () => {
     expect(reg.count).toBe(EXPECTED_IDS.length);
