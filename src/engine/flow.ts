@@ -6,6 +6,7 @@
  */
 
 import * as THREE from "three";
+import { BLOOM_LAYER } from "./scene";
 
 /** Default spine accent — a cool blue that reads as "the stream". */
 export const FLOW_COLOR = 0x6fa8ff;
@@ -45,6 +46,7 @@ export function createFlowSegment(from: Vec3, to: Vec3, opts?: FlowOptions): THR
   // Cylinder is built along +Y; rotate that to the segment direction.
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
   mesh.renderOrder = -1; // draw before the opaque cells
+  mesh.layers.enable(BLOOM_LAYER); // selective bloom picks this up
   return mesh;
 }
 

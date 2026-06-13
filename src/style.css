@@ -213,14 +213,18 @@ body {
   left: 50%;
   bottom: 18px;
   transform: translateX(-50%);
-  width: min(680px, calc(100vw - 240px));
+  width: min(720px, calc(100vw - 240px));
+  max-height: 46vh;
+  overflow-y: auto;
   border-radius: 10px;
-  padding: 14px 16px 12px;
+  padding: 15px 18px 13px;
 }
 
 .viz-narration-body {
-  margin: 0 0 10px;
+  margin: 0 0 11px;
   color: #dde2ec;
+  font-size: 14.5px;
+  line-height: 1.62;
 }
 
 .viz-controls {

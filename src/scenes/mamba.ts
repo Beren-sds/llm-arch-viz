@@ -58,7 +58,7 @@ export const MAMBA_SEQ_LEN = 21;
 /** Vertical gap between consecutive spine tensors (room for a name label). */
 const SPINE_GAP = 8;
 /** Extra vertical separation between regions (embed / block0 / block1 / head). */
-const REGION_GAP = 12;
+const REGION_GAP = 20;
 /** Min horizontal margin between the spine's widest overlap and a flank. */
 const FLANK_MARGIN = 8;
 /** Horizontal gap between flank lanes. */

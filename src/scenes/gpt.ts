@@ -46,7 +46,7 @@ export const GPT_SEQ_LEN = 21;
 // ----- layout spacing (world units) ----------------------------------------
 
 const SPINE_GAP = 8;
-const REGION_GAP = 12;
+const REGION_GAP = 20;
 const FLANK_MARGIN = 8;
 const LANE_GAP = 10;
 const FLANK_GAP = 7;

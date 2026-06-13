@@ -9,9 +9,20 @@
  */
 
 import * as THREE from "three";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
 /** Site background — keep in sync with `body` background in style.css. */
 export const BACKGROUND_COLOR = 0x0b0e14;
+
+/**
+ * Render layer for objects that should bloom (the flow spine). Selective
+ * bloom blooms ONLY this layer, so the bright data cells never blow out.
+ */
+export const BLOOM_LAYER = 1;
 
 /**
  * Frames-per-second over a sliding ~1 s window. Pure math, no DOM/RAF:
@@ -63,9 +74,9 @@ export interface SceneShell {
 export function createSceneShell(container: HTMLElement): SceneShell {
   assertWebGL2(container);
 
-  // No opaque scene.background: the renderer clears to transparent so the
-  // CSS atmosphere gradient behind the canvas (.viz-canvas) shows through,
-  // with the opaque tensor cubes drawn on top.
+  // Opaque clear to the atmosphere-centre tone; the CSS vignette over the
+  // canvas darkens the edges for a radial feel, and the bloom pass needs an
+  // opaque target to composite cleanly.
   const scene = new THREE.Scene();
 
   const camera = new THREE.PerspectiveCamera(
@@ -76,11 +87,66 @@ export function createSceneShell(container: HTMLElement): SceneShell {
   );
   camera.position.set(0, 0, 10);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(0x000000, 0); // transparent — see scene.background note
+  // Pre-linearized clear: the composer renders into a linear target and the
+  // OutputPass encodes linear→sRGB, so a raw dark clear would be lifted to a
+  // milky haze. linear(#0b0e14) ≈ #010102 round-trips back to #0b0e14.
+  renderer.setClearColor(0x010102, 1);
   renderer.setSize(container.clientWidth, container.clientHeight);
   container.appendChild(renderer.domElement);
+
+  // Selective bloom: only objects on BLOOM_LAYER (the flow spine) glow. The
+  // bloom composer renders the scene with every non-bloom mesh blacked out,
+  // blooms that, and the final composer adds the result over the full scene.
+  // (Full-scene bloom blew the bright data cells into white blobs.)
+  const bloomLayer = new THREE.Layers();
+  bloomLayer.set(BLOOM_LAYER);
+  const darkMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const savedMaterials = new Map<string, THREE.Material | THREE.Material[]>();
+  const darken = (obj: THREE.Object3D): void => {
+    const mesh = obj as THREE.Mesh;
+    if (mesh.isMesh && !bloomLayer.test(obj.layers)) {
+      savedMaterials.set(obj.uuid, mesh.material);
+      mesh.material = darkMaterial;
+    }
+  };
+  const restore = (obj: THREE.Object3D): void => {
+    const saved = savedMaterials.get(obj.uuid);
+    if (saved) {
+      (obj as THREE.Mesh).material = saved;
+      savedMaterials.delete(obj.uuid);
+    }
+  };
+
+  const renderPass = new RenderPass(scene, camera);
+  const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(container.clientWidth, container.clientHeight),
+    0.5, // strength — tight glow on the spine, not a scene-flooding haze
+    0.2, // radius
+    0, // threshold 0 — selection is by layer, not luminance
+  );
+  const bloomComposer = new EffectComposer(renderer);
+  bloomComposer.renderToScreen = false;
+  bloomComposer.addPass(renderPass);
+  bloomComposer.addPass(bloomPass);
+
+  const mixPass = new ShaderPass(
+    new THREE.ShaderMaterial({
+      uniforms: {
+        baseTexture: { value: null },
+        bloomTexture: { value: bloomComposer.renderTarget2.texture },
+      },
+      vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `uniform sampler2D baseTexture; uniform sampler2D bloomTexture; varying vec2 vUv; void main(){ gl_FragColor = texture2D(baseTexture, vUv) + texture2D(bloomTexture, vUv); }`,
+    }),
+    "baseTexture",
+  );
+  mixPass.needsSwap = true;
+  const finalComposer = new EffectComposer(renderer);
+  finalComposer.addPass(renderPass);
+  finalComposer.addPass(mixPass);
+  finalComposer.addPass(new OutputPass());
 
   // ResizeObserver instead of window `resize`: the container can change
   // size without the window doing so (panel toggles, scrollbar appearing,
@@ -88,7 +154,11 @@ export function createSceneShell(container: HTMLElement): SceneShell {
   const onResize = (): void => {
     camera.aspect = aspectOf(container);
     camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    renderer.setSize(w, h);
+    bloomComposer.setSize(w, h);
+    finalComposer.setSize(w, h);
   };
   const resizeObserver = new ResizeObserver(onResize);
   resizeObserver.observe(container);
@@ -109,7 +179,12 @@ export function createSceneShell(container: HTMLElement): SceneShell {
       const dt = last === null ? 0 : (time - last) / 1000;
       last = time;
       renderLoop(dt);
-      renderer.render(scene, camera);
+      // Selective bloom: black out non-bloom meshes, bloom the spine, restore,
+      // then render the full scene with the bloom added.
+      scene.traverse(darken);
+      bloomComposer.render();
+      scene.traverse(restore);
+      finalComposer.render();
       const f = fps.frame(time);
       if (f !== null && statsEl) statsEl.textContent = `${f.toFixed(0)} fps`;
     });
@@ -118,6 +193,9 @@ export function createSceneShell(container: HTMLElement): SceneShell {
   const dispose = (): void => {
     renderer.setAnimationLoop(null);
     resizeObserver.disconnect();
+    bloomComposer.dispose();
+    finalComposer.dispose();
+    darkMaterial.dispose();
     renderer.dispose();
     // Browsers cap live WebGL contexts per page (~8-16); Task 22 recreates
     // shells per navigation, so explicitly lose the context instead of

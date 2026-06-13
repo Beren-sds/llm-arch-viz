@@ -71,7 +71,9 @@ varying vec3 vColor;
 void main() {
   // Dimmed (out-of-focus) cells stay legible context, not crushed to black.
   vec3 c = vColor * mix(1.0, 0.55, uDim) + vec3(uHighlight * 0.22);
-  gl_FragColor = vec4(c, 1.0);
+  // Output linear: the post-processing OutputPass encodes linear→sRGB, so
+  // pre-linearize to keep the intended flat cell colours (≈ sRGB→linear).
+  gl_FragColor = vec4(pow(max(c, 0.0), vec3(2.2)), 1.0);
 }
 `;
 
