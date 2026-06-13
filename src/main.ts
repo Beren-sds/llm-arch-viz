@@ -3,6 +3,7 @@ import { I18n } from "./i18n/i18n";
 import { DICTS } from "./i18n/dicts";
 import { buildMambaScene, buildMambaChapters, MAMBA_SEQ_LEN } from "./scenes/mamba";
 import { buildGptScene, buildGptChapters, GPT_SEQ_LEN } from "./scenes/gpt";
+import { buildRwkvScene, buildRwkvChapters, RWKV_SEQ_LEN } from "./scenes/rwkv";
 import { createRouter, type ArchDef } from "./pages/router";
 
 // The shared selective-copying input every architecture runs (Task 3's
@@ -17,8 +18,12 @@ function requireEl(selector: string): HTMLDivElement {
   return node;
 }
 
-if (SELECTIVE_COPY_INPUT.length !== MAMBA_SEQ_LEN || SELECTIVE_COPY_INPUT.length !== GPT_SEQ_LEN) {
-  throw new Error("SELECTIVE_COPY_INPUT length must match both scene sequence lengths");
+if (
+  SELECTIVE_COPY_INPUT.length !== MAMBA_SEQ_LEN ||
+  SELECTIVE_COPY_INPUT.length !== GPT_SEQ_LEN ||
+  SELECTIVE_COPY_INPUT.length !== RWKV_SEQ_LEN
+) {
+  throw new Error("SELECTIVE_COPY_INPUT length must match all scene sequence lengths");
 }
 
 const app = requireEl("#app");
@@ -41,6 +46,14 @@ const archs: ArchDef[] = [
       buildGptScene({ scene, weights: model.weights, manifest: model.manifest, picker, i18n: i }),
     buildChapters: buildGptChapters,
   },
+  {
+    id: "rwkv",
+    titleKey: "scene.rwkv.title",
+    tokens: SELECTIVE_COPY_INPUT,
+    buildScene: ({ scene, picker, i18n: i }, model) =>
+      buildRwkvScene({ scene, weights: model.weights, manifest: model.manifest, picker, i18n: i }),
+    buildChapters: buildRwkvChapters,
+  },
 ];
 
 createRouter({
@@ -48,5 +61,5 @@ createRouter({
   i18n,
   baseUrl: import.meta.env.BASE_URL,
   archs,
-  comingSoon: ["rwkv", "moe", "kan", "retnet"],
+  comingSoon: ["moe", "kan", "retnet"],
 });
