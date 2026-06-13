@@ -85,8 +85,14 @@ function titleKeyOf(ch: Chapter): string {
 /** Quiet time before the camera starts its gentle showcase orbit. */
 const IDLE_ORBIT_MS = 6000;
 
+/** Respect the OS "reduce motion" setting (gates idle orbit + timeline autoplay). */
+function prefersReducedMotion(): boolean {
+  return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export function createArchPage(deps: ArchPageDeps): ArchPage {
   const { container, i18n } = deps;
+  const reduceMotion = prefersReducedMotion();
   // Mutable: the live input editor reassigns this on every edit, and
   // goToChapter restores the full sequence from it when leaving a chapter.
   let tokens = deps.tokens.slice();
@@ -258,7 +264,9 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
       slider.value = "0";
       sliderVal.textContent = "0";
       timeline.load(ch.timeline);
-      timeline.play();
+      // Reduced-motion: don't auto-run a looping animation. The user can press
+      // Play or scrub the slider to step through it manually.
+      if (!reduceMotion) timeline.play();
     }
 
     renderChrome();
@@ -315,7 +323,7 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
     tour.update(now);
     if (tour.state === "idle") {
       // OrbitControls drives; report the live view so the next fly-to starts here.
-      controls.autoRotate = now - lastUserMs > IDLE_ORBIT_MS;
+      controls.autoRotate = !reduceMotion && now - lastUserMs > IDLE_ORBIT_MS;
       controls.update();
       tour.syncCurrent(
         [shell.camera.position.x, shell.camera.position.y, shell.camera.position.z],

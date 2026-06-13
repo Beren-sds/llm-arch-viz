@@ -778,4 +778,51 @@ button.viz-tok.is-data:hover {
   .landing-card {
     animation: none;
   }
+  /* No movement on hover/focus either (idle camera orbit + timeline autoplay
+     are gated in archPage.ts). */
+  .landing-card.is-live,
+  .landing-compare,
+  .compare-row td {
+    transition: none;
+  }
+  .landing-card.is-live:hover {
+    transform: none;
+  }
+}
+
+/* ===== Narrow screens: stack the arch-page chrome so it stays usable ====== */
+
+@media (max-width: 680px) {
+  .viz-input {
+    top: 50px;
+    left: 8px;
+    right: 8px;
+    transform: none;
+    max-width: none;
+    justify-content: flex-start;
+    padding: 6px 8px;
+  }
+  .viz-input-label {
+    display: none;
+  }
+  .viz-sidebar {
+    top: 96px;
+    left: 8px;
+    width: 146px;
+    max-height: 30vh;
+    padding: 8px;
+  }
+  .viz-chapter-item {
+    padding: 6px 7px;
+    font-size: 13px;
+  }
+  .viz-narration {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    transform: none;
+    width: auto;
+    max-width: none;
+    max-height: 40vh;
+  }
 }
