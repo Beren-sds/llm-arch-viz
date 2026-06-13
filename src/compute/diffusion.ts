@@ -100,3 +100,89 @@ export function diffusionForward(
   rec?.record("head.logits", logits);
   return logits;
 }
+
+/** Trajectory of a confidence-ordered iterative denoise over the answer tail. */
+export interface DiffusionSampler {
+  /** Absolute answer-tail positions, in the order they are unmasked. */
+  order: number[];
+  /** The token id committed at each revealed position (aligned with order). */
+  values: number[];
+}
+
+/** Argmax index + its softmax probability for logits row `p` of (T, vocab). */
+function rowArgmaxProb(logits: T, p: number, vocab: number): { argmax: number; prob: number } {
+  const base = p * vocab;
+  let max = -Infinity;
+  let argmax = 0;
+  for (let j = 0; j < vocab; j++) {
+    const v = logits.data[base + j];
+    if (v > max) {
+      max = v;
+      argmax = j;
+    }
+  }
+  let sum = 0;
+  for (let j = 0; j < vocab; j++) sum += Math.exp(logits.data[base + j] - max);
+  return { argmax, prob: 1 / sum }; // exp(max-max)=1, divided by the sum
+}
+
+/**
+ * Confidence-ordered iterative denoise of the answer tail (the last
+ * `answerLen` positions of `baseTokens`). Each step forwards the
+ * partially-masked sequence, then commits the still-masked answer position
+ * whose top prediction is most confident. Deterministic, and built only on
+ * the golden-gated diffusionForward — it adds a sampling *policy*, not new
+ * trained compute.
+ */
+export function diffusionSampleTrajectory(
+  weights: Map<string, T>,
+  dims: DiffusionDims,
+  baseTokens: number[],
+  answerLen: number,
+): DiffusionSampler {
+  const len = baseTokens.length;
+  const ansStart = len - answerLen;
+  const work = baseTokens.slice();
+  for (let i = ansStart; i < len; i++) work[i] = dims.mask_id;
+  const order: number[] = [];
+  const values: number[] = [];
+  const revealed = new Set<number>();
+  for (let step = 0; step < answerLen; step++) {
+    const logits = diffusionForward(weights, dims, work);
+    let bestPos = -1;
+    let bestConf = -Infinity;
+    let bestVal = 0;
+    for (let p = ansStart; p < len; p++) {
+      if (revealed.has(p)) continue;
+      const { argmax, prob } = rowArgmaxProb(logits, p, dims.vocab_size);
+      if (prob > bestConf) {
+        bestConf = prob;
+        bestPos = p;
+        bestVal = argmax;
+      }
+    }
+    work[bestPos] = bestVal;
+    revealed.add(bestPos);
+    order.push(bestPos);
+    values.push(bestVal);
+  }
+  return { order, values };
+}
+
+/** Masked input after revealing the first `k` steps of a trajectory. */
+export function diffusionRevealInput(
+  baseTokens: number[],
+  dims: DiffusionDims,
+  answerLen: number,
+  sampler: DiffusionSampler,
+  k: number,
+): number[] {
+  const len = baseTokens.length;
+  const ansStart = len - answerLen;
+  const work = baseTokens.slice();
+  for (let i = ansStart; i < len; i++) work[i] = dims.mask_id;
+  for (let j = 0; j < Math.min(k, sampler.order.length); j++) {
+    work[sampler.order[j]] = sampler.values[j];
+  }
+  return work;
+}

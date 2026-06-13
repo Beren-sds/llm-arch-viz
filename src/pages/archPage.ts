@@ -250,6 +250,13 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
     focused = ch.highlights;
 
     if (ch.timeline) {
+      // The slider scrubs this chapter's step range — token-prefix length for
+      // the scan, denoising-step count for diffusion's sampler.
+      let maxStep = 0;
+      for (const s of ch.timeline.steps) if (s.kind === "stepToken") maxStep = Math.max(maxStep, s.token);
+      slider.max = String(maxStep);
+      slider.value = "0";
+      sliderVal.textContent = "0";
       timeline.load(ch.timeline);
       timeline.play();
     }

@@ -10,7 +10,13 @@
 import * as THREE from "three";
 import { T } from "../compute/tensor";
 import { getTensor, type Manifest } from "../compute/loader";
-import { diffusionDimsFrom, diffusionForward } from "../compute/diffusion";
+import {
+  diffusionDimsFrom,
+  diffusionForward,
+  diffusionRevealInput,
+  diffusionSampleTrajectory,
+  type DiffusionSampler,
+} from "../compute/diffusion";
 import { MapRecorder } from "../compute/recorder";
 import { TensorView } from "../engine/tensorView";
 import { createEdge, createFlowSegment, disposeFlow } from "../engine/flow";
@@ -24,7 +30,7 @@ import {
 } from "../engine/labels";
 import type { Picker } from "../engine/picking";
 import type { CameraKeyframe } from "../engine/cameraTour";
-import type { SceneBinding } from "../walkthrough/timeline";
+import type { SceneBinding, TimelineSpec, TimelineStep } from "../walkthrough/timeline";
 import { ChapterRegistry, type Chapter } from "../walkthrough/chapters";
 import type { I18n } from "../i18n/i18n";
 import type { SceneController } from "./sceneController";
@@ -52,6 +58,7 @@ export const DIFFUSION_ANCHOR_NAMES = [
   "mlp0",
   "block1",
   "head",
+  "sample0",
 ] as const;
 
 export interface LabelFactory {
@@ -299,6 +306,12 @@ export function buildDiffusionScene(deps: DiffusionSceneDeps): SceneController {
   anchors.set("mlp0", frameRect(pad(union(r("layer0.mlp.fc"), r("layer0.mlp.act"), r("layer0.mlp.proj"), r("mlps.0.fc.weight")), 6), true));
   anchors.set("block1", frameRect(pad(lyr(1, "ln1.out", "attn.out", "ln2.out", "mlp.proj"), 7), true));
   anchors.set("head", frameRect(pad(union(r("final_norm.out"), r("head.logits"), r("head.weight")), 7), true));
+  // The sampling chapter watches the whole denoiser re-run: input tail
+  // (embed.out), the last block's bidirectional weights, and the output logits.
+  anchors.set(
+    "sample0",
+    frameRect(pad(union(r("embed.out"), r("layer1.attn.weights"), r("head.logits")), 8), false),
+  );
 
   // -- compute ------------------------------------------------------------------
   function applyActivations(acts: Map<string, T>): void {
@@ -309,24 +322,25 @@ export function buildDiffusionScene(deps: DiffusionSceneDeps): SceneController {
     }
     picker?.requestRepick();
   }
-  /** Mask the answer tail (the last ANSWER_POSITIONS tokens) before denoising. */
-  function maskedInput(toks: number[]): number[] {
-    const m = toks.slice();
-    for (let i = m.length - ANSWER_POSITIONS; i < m.length; i++) m[i] = dims.mask_id;
-    return m;
-  }
-  function runTokens(toks: number[]): Map<string, T> {
+  // Confidence-ordered denoising trajectory for the current input, recomputed
+  // on every setTokens. Drives the sampling chapter's progressive reveal.
+  let sampler: DiffusionSampler = { order: [], values: [] };
+
+  /** Denoise with the first `k` answer tokens revealed (0 = all masked). */
+  function runReveal(k: number): Map<string, T> {
     const rec = new MapRecorder();
-    diffusionForward(weights, dims, maskedInput(toks), rec);
+    diffusionForward(weights, dims, diffusionRevealInput(tokens, dims, ANSWER_POSITIONS, sampler, k), rec);
     return rec.activations;
   }
   const binding: SceneBinding = {
-    runForward(uptoToken: number): Map<string, T> {
+    // For diffusion, the "step" is a denoising iteration, not a prefix length:
+    // runForward(k) reveals the first k answer tokens (k in [0, ANSWER_POSITIONS]).
+    runForward(step: number): Map<string, T> {
       if (tokens.length === 0) throw new Error("diffusion scene: runForward before setTokens");
-      if (!Number.isInteger(uptoToken) || uptoToken < 0 || uptoToken >= tokens.length) {
-        throw new Error(`diffusion scene: uptoToken ${uptoToken} out of range [0, ${tokens.length})`);
+      if (!Number.isInteger(step) || step < 0 || step > ANSWER_POSITIONS) {
+        throw new Error(`diffusion scene: reveal step ${step} out of range [0, ${ANSWER_POSITIONS}]`);
       }
-      return runTokens(tokens.slice(0, uptoToken + 1));
+      return runReveal(step);
     },
     applyActivations,
     setHighlight(names: string[], on: boolean): void {
@@ -356,7 +370,8 @@ export function buildDiffusionScene(deps: DiffusionSceneDeps): SceneController {
       }
     }
     tokens = toks.slice();
-    applyActivations(runTokens(tokens));
+    sampler = diffusionSampleTrajectory(weights, dims, tokens, ANSWER_POSITIONS);
+    applyActivations(runReveal(0)); // static display: the fully-masked denoise
   }
   function update(camera: THREE.Camera): void {
     for (const face of billboards) face(camera);
@@ -440,6 +455,22 @@ export function buildDiffusionChapters(scene: SceneController, i18n: I18n): Chap
       highlights: ["final_norm.out", "head.logits", "head.weight"],
       narrationKey: "diffusion.ch.readout.body",
     },
+    {
+      id: "sample",
+      camera: at("sample0"),
+      highlights: ["embed.out", "head.logits"],
+      narrationKey: "diffusion.ch.sample.body",
+      timeline: sampleTimeline,
+    },
   ];
   return new ChapterRegistry("diffusion", chapters, i18n);
 }
+
+// The sampler chapter unmasks one answer token per step (confidence order),
+// re-denoising each time: runForward(k) reveals the first k answer tokens.
+const sampleSteps: TimelineStep[] = Array.from({ length: ANSWER_POSITIONS + 1 }, (_, k) => ({
+  kind: "stepToken",
+  token: k,
+  durationMs: k === 0 ? 1200 : k === ANSWER_POSITIONS ? 2200 : 1500,
+}));
+const sampleTimeline: TimelineSpec = { steps: sampleSteps, loop: true };

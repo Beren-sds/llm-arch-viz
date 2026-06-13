@@ -113,6 +113,7 @@ describe("buildDiffusionChapters (real scene + real i18n dicts)", () => {
     "mlp",
     "layer2",
     "readout",
+    "sample",
   ];
 
   it("registers the chapters in order", () => {
