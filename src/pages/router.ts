@@ -21,6 +21,7 @@ import type { SceneController } from "../scenes/sceneController";
 import { createArchPage, type ArchPage } from "./archPage";
 import type { TaskShape } from "./inputEditor";
 import { createLanding, type Landing } from "./landing";
+import { createComparePage, type ComparePage } from "./compare";
 import { button, el } from "./dom";
 
 export interface ArchDef {
@@ -54,14 +55,19 @@ export interface RouterDeps {
 
 export type Route =
   | { kind: "landing" }
+  | { kind: "compare" }
   | { kind: "arch"; arch: string; chapterId?: string };
 
 /**
- * Pure hash → route resolution (unit-tested). Anything that isn't a known
- * arch — `#/`, empty, malformed, or an unimplemented arch — is the landing.
+ * Pure hash → route resolution (unit-tested). `#/compare` is the comparison
+ * page; a known arch (optionally + chapter) is its page; anything else —
+ * `#/`, empty, malformed, or an unimplemented arch — is the landing.
  */
 export function resolveRoute(hash: string, knownArchs: readonly string[]): Route {
   const parsed = parseHash(hash);
+  if (parsed && parsed.scene === "compare" && parsed.chapterId === undefined) {
+    return { kind: "compare" };
+  }
   if (parsed && knownArchs.includes(parsed.scene)) {
     return parsed.chapterId === undefined
       ? { kind: "arch", arch: parsed.scene }
@@ -72,6 +78,7 @@ export function resolveRoute(hash: string, knownArchs: readonly string[]): Route
 
 type Mounted =
   | { kind: "landing"; page: Landing }
+  | { kind: "compare"; page: ComparePage }
   | { kind: "arch"; arch: string; page: ArchPage }
   | { kind: "arch-error"; arch: string; chapterId?: string }
   | null;
@@ -117,9 +124,35 @@ export function createRouter(deps: RouterDeps): { dispose(): void } {
       onOpen: (id) => {
         location.hash = toHash(id);
       },
+      onCompare: () => {
+        location.hash = toHash("compare");
+      },
     });
     mounted = { kind: "landing", page };
     document.body.dataset.settled = "1"; // landing has no async labels
+  }
+
+  function mountCompare(): void {
+    teardown();
+    document.body.dataset.settled = "0";
+    const page = createComparePage({
+      container,
+      i18n,
+      baseUrl,
+      archs: knownArchs,
+      onOpen: (id) => {
+        location.hash = toHash(id);
+      },
+      onHome: () => {
+        location.hash = "#/";
+      },
+    });
+    mounted = { kind: "compare", page };
+    void page.ready.then(() => {
+      if (mounted?.kind === "compare" && mounted.page === page) {
+        document.body.dataset.settled = "1";
+      }
+    });
   }
 
   async function mountArch(arch: string, chapterId?: string): Promise<void> {
@@ -195,6 +228,11 @@ export function createRouter(deps: RouterDeps): { dispose(): void } {
 
   function route(): void {
     const r = resolveRoute(location.hash, knownArchs);
+    if (r.kind === "compare") {
+      if (mounted?.kind === "compare") return;
+      mountCompare();
+      return;
+    }
     if (r.kind === "arch") {
       // The arch page echoes its own chapter changes into the URL. If the
       // same arch is already mounted, treat the hashchange as a deep-link /
@@ -218,6 +256,7 @@ export function createRouter(deps: RouterDeps): { dispose(): void } {
   const unsubscribe = i18n.onChange(() => {
     if (mounted?.kind === "arch") void mountArch(mounted.arch, mounted.page.chapterId);
     else if (mounted?.kind === "arch-error") void mountArch(mounted.arch, mounted.chapterId);
+    else if (mounted?.kind === "compare") mountCompare();
     else mountLanding();
   });
 

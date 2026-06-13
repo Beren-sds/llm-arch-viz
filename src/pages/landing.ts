@@ -22,6 +22,8 @@ export interface LandingDeps {
   cards: LandingCard[];
   /** Open a live architecture (the router turns this into a hash navigation). */
   onOpen: (archId: string) => void;
+  /** Open the cross-architecture comparison page. */
+  onCompare: () => void;
 }
 
 export interface Landing {
@@ -43,7 +45,9 @@ export function createLanding(deps: LandingDeps): Landing {
   const hero = el("header", "landing-hero");
   const h1 = el("h1", "landing-title");
   const sub = el("p", "landing-subtitle");
-  hero.append(h1, sub);
+  const compareBtn = button("landing-compare");
+  compareBtn.addEventListener("click", deps.onCompare);
+  hero.append(h1, sub, compareBtn);
 
   const grid = el("div", "landing-grid");
   const refs: Array<{ card: LandingCard; title: HTMLElement; desc: HTMLElement; action: HTMLElement }> =
@@ -79,6 +83,7 @@ export function createLanding(deps: LandingDeps): Landing {
     langBtn.textContent = i18n.t("ui.langToggle");
     h1.textContent = i18n.t("ui.landing.title");
     sub.textContent = i18n.t("ui.landing.subtitle");
+    compareBtn.textContent = i18n.t("ui.compare");
     for (const { card, title, desc, action } of refs) {
       title.textContent = i18n.t(`card.${card.id}.title`);
       desc.textContent = i18n.t(`card.${card.id}.desc`);

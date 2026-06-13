@@ -22,6 +22,14 @@ describe("resolveRoute", () => {
     });
   });
 
+  it("maps the compare route", () => {
+    expect(resolveRoute("#/compare", ARCHS)).toEqual({ kind: "compare" });
+  });
+
+  it("does not treat #/compare/x as compare (no sub-route)", () => {
+    expect(resolveRoute("#/compare/foo", ARCHS)).toEqual({ kind: "landing" });
+  });
+
   it("lands for the root hash and empty string", () => {
     expect(resolveRoute("#/", ARCHS)).toEqual({ kind: "landing" });
     expect(resolveRoute("", ARCHS)).toEqual({ kind: "landing" });

@@ -476,6 +476,145 @@ button.viz-tok.is-data:hover {
   font-size: 16px;
 }
 
+.landing-compare {
+  margin-top: 22px;
+  border: 1px solid #3f6fb0;
+  border-radius: 8px;
+  background: rgba(127, 180, 255, 0.12);
+  color: #d7e3ff;
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.landing-compare:hover {
+  background: rgba(127, 180, 255, 0.22);
+  border-color: #5a8fd6;
+}
+
+/* ===== Comparison page (pages/compare.ts) ================================= */
+
+.compare {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 0 24px 56px;
+  background: #0b0e14;
+  color: #e6e8ee;
+}
+
+.compare-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.compare-top .viz-lang {
+  margin-left: auto;
+}
+
+.compare-hero {
+  max-width: 920px;
+  margin: 2vh auto 28px;
+  text-align: center;
+}
+
+.compare-title {
+  margin: 0 0 12px;
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  background: linear-gradient(95deg, #9fd0ff, #c9b6ff 70%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.compare-subtitle {
+  margin: 0 auto;
+  max-width: 680px;
+  color: #aab2c2;
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+
+.compare-table {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.compare-table th,
+.compare-table td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid #1d2433;
+  vertical-align: top;
+}
+
+.compare-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #707a8e;
+  font-weight: 600;
+  border-bottom-color: #2a3344;
+}
+
+.compare-row:hover td {
+  background: rgba(127, 180, 255, 0.05);
+}
+
+.compare-open {
+  border: 0;
+  background: none;
+  color: #9fd0ff;
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.compare-open:hover {
+  text-decoration: underline;
+}
+
+.compare-cell-cost,
+.compare-cell-params {
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #b9c0cf;
+  white-space: nowrap;
+}
+
+.compare-cell-params {
+  color: #7fd962;
+  text-align: right;
+}
+
+.compare-cell-idea {
+  color: #aab2c2;
+  max-width: 320px;
+}
+
+@media (max-width: 720px) {
+  .compare-table {
+    font-size: 12.5px;
+  }
+  .compare-table th,
+  .compare-table td {
+    padding: 9px 8px;
+  }
+  .compare-cell-idea {
+    display: none;
+  }
+}
+
 .landing-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
