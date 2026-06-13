@@ -263,6 +263,10 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
 
     const ch = chapters.get(current);
     bodyEl.textContent = i18n.t(ch.narrationKey);
+    // Restart the fade-up so the narration animates in on each chapter change.
+    bodyEl.classList.remove("is-fading");
+    void bodyEl.offsetWidth;
+    bodyEl.classList.add("is-fading");
     prevBtn.disabled = current === 0;
     nextBtn.disabled = current === chapters.count - 1;
 

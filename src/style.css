@@ -440,3 +440,95 @@ body {
   text-transform: uppercase;
   color: #707a8e;
 }
+
+/* ===== Motion polish ====================================================== */
+
+.viz-btn,
+.viz-lang,
+.viz-home,
+.viz-chapter-item,
+.landing-open {
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+@keyframes vizFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Narration animates in on each chapter change (class toggled in archPage). */
+.viz-narration-body.is-fading {
+  animation: vizFadeUp 0.38s ease both;
+}
+
+@keyframes vizPanelIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.viz-topbar,
+.viz-sidebar,
+.viz-narration {
+  animation: vizPanelIn 0.45s ease both;
+}
+
+@keyframes vizCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.landing-hero {
+  animation: vizFadeUp 0.5s ease both;
+}
+
+.landing-card {
+  animation: vizCardIn 0.5s ease both;
+}
+
+.landing-card:nth-child(2) {
+  animation-delay: 0.05s;
+}
+.landing-card:nth-child(3) {
+  animation-delay: 0.1s;
+}
+.landing-card:nth-child(4) {
+  animation-delay: 0.15s;
+}
+.landing-card:nth-child(5) {
+  animation-delay: 0.2s;
+}
+.landing-card:nth-child(6) {
+  animation-delay: 0.25s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viz-narration-body.is-fading,
+  .viz-topbar,
+  .viz-sidebar,
+  .viz-narration,
+  .landing-hero,
+  .landing-card {
+    animation: none;
+  }
+}
