@@ -42,9 +42,9 @@ try {
   const url = new URL(urlPath, baseUrl).href;
   console.log(`Loading ${url}`);
   await page.goto(url, { waitUntil: "load" });
-  await page.waitForSelector("canvas", { timeout: 10_000 });
+  await page.waitForSelector("canvas", { timeout: 30_000 });
   await page.waitForFunction(() => document.body.dataset.settled !== "0", undefined, {
-    timeout: 20_000,
+    timeout: 30_000,
   });
 
   const count = await page.locator(".viz-chapter-item").count();
@@ -70,7 +70,7 @@ try {
   // Locale flip: rebuilds the page; verify it lands and re-screenshot ch.1.
   await page.locator(".viz-lang").click();
   await page.waitForFunction(() => document.body.dataset.settled !== "0", undefined, {
-    timeout: 20_000,
+    timeout: 30_000,
   });
   await page.waitForTimeout(1700);
   await page.screenshot({ path: resolve(outDir, "tour-zh.png") });

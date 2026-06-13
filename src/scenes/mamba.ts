@@ -47,15 +47,13 @@ import type { SceneBinding, TimelineSpec, TimelineStep } from "../walkthrough/ti
 import { ChapterRegistry, type Chapter } from "../walkthrough/chapters";
 import type { I18n } from "../i18n/i18n";
 import type { SceneController } from "./sceneController";
+import { CELL, GAP, PITCH, frameRect, gridSize, pad, union, type Rect } from "./layout";
 
 /** Sequence length the layout is built for (selective-copying training T). */
 export const MAMBA_SEQ_LEN = 21;
 
 // ----- layout constants (world units) --------------------------------------
 
-const CELL = 1;
-const GAP = 0.25;
-const PITCH = CELL + GAP;
 /** Vertical gap between consecutive spine tensors (room for a name label). */
 const SPINE_GAP = 8;
 /** Extra vertical separation between regions (embed / block0 / block1 / head). */
@@ -68,10 +66,6 @@ const LANE_GAP = 10;
 const FLANK_GAP = 8;
 /** Label sits this far above its grid's top edge (anchorY: top). */
 const LABEL_RISE = 4.2;
-
-const VFOV_RAD = (45 * Math.PI) / 180; // keep in sync with createSceneShell
-/** Anchor distances assume at least this viewport aspect for width fits. */
-const ASSUMED_ASPECT = 16 / 9;
 
 /** Anchor names Task 20 chapters fly to (all present in `anchors`). */
 export const MAMBA_ANCHOR_NAMES = [
@@ -161,57 +155,6 @@ function formulaFor(name: string): string | undefined {
     default:
       return undefined;
   }
-}
-
-// ----- internals -------------------------------------------------------------
-
-interface Rect {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-}
-
-function union(...rects: Rect[]): Rect {
-  const r = { ...rects[0] };
-  for (const x of rects) {
-    r.left = Math.min(r.left, x.left);
-    r.right = Math.max(r.right, x.right);
-    r.top = Math.max(r.top, x.top);
-    r.bottom = Math.min(r.bottom, x.bottom);
-  }
-  return r;
-}
-
-function pad(r: Rect, by: number): Rect {
-  return { left: r.left - by, right: r.right + by, top: r.top + by, bottom: r.bottom - by };
-}
-
-/** Footprint of a 1D/2D grid: rows down, cols across (TensorView layout). */
-function gridSize(shape: readonly number[]): { w: number; h: number } {
-  const cols = shape[shape.length - 1];
-  const rows = shape.length === 1 ? 1 : shape[0];
-  return { w: cols * PITCH - GAP, h: rows * PITCH - GAP };
-}
-
-/**
- * Camera keyframe framing `r`: pulled back along +z far enough that the
- * rect fits vertically (45° vfov) and horizontally (assuming a 16:9-ish
- * viewport), with a little breathing room. `angled` offsets the position
- * slightly up-right for a hint of depth on the cube grids.
- */
-function frameRect(r: Rect, angled: boolean): CameraKeyframe {
-  const w = r.right - r.left;
-  const h = r.top - r.bottom;
-  const cx = (r.left + r.right) / 2;
-  const cy = (r.top + r.bottom) / 2;
-  const tan = Math.tan(VFOV_RAD / 2);
-  // +CELL: the cells are unit cubes around z=0; keep the front faces inside.
-  const dist = Math.max((h / 2) / tan, w / 2 / (tan * ASSUMED_ASPECT)) * 1.12 + CELL;
-  const pos: [number, number, number] = angled
-    ? [cx + dist * 0.16, cy + dist * 0.08, dist]
-    : [cx, cy, dist];
-  return { pos, target: [cx, cy, 0] };
 }
 
 // ----- the scene -------------------------------------------------------------
