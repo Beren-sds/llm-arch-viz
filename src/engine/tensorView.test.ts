@@ -2,6 +2,13 @@ import * as THREE from "three";
 import { describe, expect, it, vi } from "vitest";
 import { T } from "../compute/tensor";
 import { TensorView, unflattenIndex, type TensorLayout } from "./tensorView";
+import { MASKED_COLOR, MID_COLOR, NEG_COLOR, POS_COLOR } from "./colormap";
+
+const rgbArr = (c: { r: number; g: number; b: number }): [number, number, number] => [
+  c.r,
+  c.g,
+  c.b,
+];
 
 const LAYOUT: TensorLayout = { cellSize: 1, gap: 0.25, origin: [2, 3, 4] };
 const PITCH = 1.25; // cellSize + gap
@@ -89,23 +96,23 @@ describe("setValues", () => {
   it("writes colormap colors into the instance color attribute (default scale)", () => {
     const view = new TensorView("v", [3], LAYOUT);
     view.setValues(T.from([-2, 0, 2], [3])); // tensorScale = 2
-    expect(colorOf(view, 0)).toEqual(f32([0.13, 0.3, 0.85])); // -scale -> deep blue
-    expect(colorOf(view, 1)).toEqual(f32([0.96, 0.96, 0.97])); // 0 -> near-white
-    expect(colorOf(view, 2)).toEqual(f32([0.88, 0.18, 0.16])); // +scale -> deep red
+    expect(colorOf(view, 0)).toEqual(f32(rgbArr(NEG_COLOR))); // -scale
+    expect(colorOf(view, 1)).toEqual(f32(rgbArr(MID_COLOR))); // 0
+    expect(colorOf(view, 2)).toEqual(f32(rgbArr(POS_COLOR))); // +scale
   });
 
   it("respects an explicit scale (clamping beyond it)", () => {
     const view = new TensorView("v", [2], LAYOUT);
     view.setValues(T.from([5, -5], [2]), 1);
-    expect(colorOf(view, 0)).toEqual(f32([0.88, 0.18, 0.16]));
-    expect(colorOf(view, 1)).toEqual(f32([0.13, 0.3, 0.85]));
+    expect(colorOf(view, 0)).toEqual(f32(rgbArr(POS_COLOR)));
+    expect(colorOf(view, 1)).toEqual(f32(rgbArr(NEG_COLOR)));
     expect(view.scale).toBe(1);
   });
 
   it("renders -Infinity masked cells with the masked color", () => {
     const view = new TensorView("s", [2], LAYOUT);
     view.setValues(T.from([-Infinity, 1], [2]));
-    expect(colorOf(view, 0)).toEqual(f32([0.16, 0.18, 0.22]));
+    expect(colorOf(view, 0)).toEqual(f32(rgbArr(MASKED_COLOR)));
   });
 
   it("flags the color attribute for upload (version bump)", () => {

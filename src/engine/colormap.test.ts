@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { T } from "../compute/tensor";
-import { MASKED_COLOR, ERROR_COLOR, tensorScale, valueColor } from "./colormap";
+import {
+  MASKED_COLOR,
+  ERROR_COLOR,
+  NEG_COLOR,
+  MID_COLOR,
+  POS_COLOR,
+  tensorScale,
+  valueColor,
+} from "./colormap";
 
 function rgb(v: number, scale: number): [number, number, number] {
   const out = { r: 0, g: 0, b: 0 };
@@ -10,23 +18,23 @@ function rgb(v: number, scale: number): [number, number, number] {
 
 describe("valueColor", () => {
   it("hits the exact endpoint colors at -scale, 0, +scale", () => {
-    expect(rgb(-2, 2)).toEqual([0.13, 0.3, 0.85]); // deep blue
-    expect(rgb(0, 2)).toEqual([0.96, 0.96, 0.97]); // near-white
-    expect(rgb(2, 2)).toEqual([0.88, 0.18, 0.16]); // deep red
+    expect(rgb(-2, 2)).toEqual([NEG_COLOR.r, NEG_COLOR.g, NEG_COLOR.b]);
+    expect(rgb(0, 2)).toEqual([MID_COLOR.r, MID_COLOR.g, MID_COLOR.b]);
+    expect(rgb(2, 2)).toEqual([POS_COLOR.r, POS_COLOR.g, POS_COLOR.b]);
   });
 
-  it("interpolates linearly at the positive midpoint (t = 0.5 toward red)", () => {
+  it("interpolates linearly at the positive midpoint (t = 0.5 toward POS)", () => {
     const [r, g, b] = rgb(1, 2);
-    expect(r).toBeCloseTo(0.5 * 0.96 + 0.5 * 0.88, 10);
-    expect(g).toBeCloseTo(0.5 * 0.96 + 0.5 * 0.18, 10);
-    expect(b).toBeCloseTo(0.5 * 0.97 + 0.5 * 0.16, 10);
+    expect(r).toBeCloseTo(0.5 * MID_COLOR.r + 0.5 * POS_COLOR.r, 10);
+    expect(g).toBeCloseTo(0.5 * MID_COLOR.g + 0.5 * POS_COLOR.g, 10);
+    expect(b).toBeCloseTo(0.5 * MID_COLOR.b + 0.5 * POS_COLOR.b, 10);
   });
 
-  it("interpolates linearly at the negative midpoint (t = 0.5 toward blue)", () => {
+  it("interpolates linearly at the negative midpoint (t = 0.5 toward NEG)", () => {
     const [r, g, b] = rgb(-1, 2);
-    expect(r).toBeCloseTo(0.5 * 0.96 + 0.5 * 0.13, 10);
-    expect(g).toBeCloseTo(0.5 * 0.96 + 0.5 * 0.3, 10);
-    expect(b).toBeCloseTo(0.5 * 0.97 + 0.5 * 0.85, 10);
+    expect(r).toBeCloseTo(0.5 * MID_COLOR.r + 0.5 * NEG_COLOR.r, 10);
+    expect(g).toBeCloseTo(0.5 * MID_COLOR.g + 0.5 * NEG_COLOR.g, 10);
+    expect(b).toBeCloseTo(0.5 * MID_COLOR.b + 0.5 * NEG_COLOR.b, 10);
   });
 
   it("clamps values beyond +/- scale to the endpoint colors", () => {

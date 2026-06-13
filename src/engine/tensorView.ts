@@ -37,18 +37,22 @@ export function unflattenIndex(i: number, shape: readonly number[]): number[] {
   return coord;
 }
 
-// Vertex: instance transform + per-instance color, with a cheap fake-light
-// touch — top (+y) and front (+z) faces slightly brighter so cube edges
-// read without real lighting. No normals needed in the fragment stage.
+// Vertex: instance transform + per-instance color, Lambert-shaded against a
+// fixed key light. The boxes aren't rotated, so the object-space face normal
+// is the world normal — top/front faces catch the light, sides/back fall to
+// the ambient floor, which gives every cell crisp readable cube depth
+// instead of a flat noise texture. No normals needed in the fragment stage.
 const VERTEX = /* glsl */ `
 varying vec3 vColor;
+const vec3 LIGHT_DIR = vec3(0.32487, 0.74257, 0.58478); // normalized (0.35,0.8,0.63)
 void main() {
   #ifdef USE_INSTANCING_COLOR
     vColor = instanceColor;
   #else
     vColor = vec3(1.0);
   #endif
-  vColor *= 0.84 + 0.16 * max(normal.y, 0.0) + 0.08 * max(normal.z, 0.0);
+  float diff = max(dot(normalize(normal), LIGHT_DIR), 0.0);
+  vColor *= 0.68 + 0.32 * diff;
   vec4 p = vec4(position, 1.0);
   #ifdef USE_INSTANCING
     p = instanceMatrix * p;
@@ -65,7 +69,8 @@ uniform float uDim;
 uniform float uHighlight;
 varying vec3 vColor;
 void main() {
-  vec3 c = vColor * mix(1.0, 0.35, uDim) + vec3(uHighlight * 0.25);
+  // Dimmed (out-of-focus) cells stay legible context, not crushed to black.
+  vec3 c = vColor * mix(1.0, 0.55, uDim) + vec3(uHighlight * 0.22);
   gl_FragColor = vec4(c, 1.0);
 }
 `;

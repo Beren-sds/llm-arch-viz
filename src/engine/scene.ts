@@ -63,8 +63,10 @@ export interface SceneShell {
 export function createSceneShell(container: HTMLElement): SceneShell {
   assertWebGL2(container);
 
+  // No opaque scene.background: the renderer clears to transparent so the
+  // CSS atmosphere gradient behind the canvas (.viz-canvas) shows through,
+  // with the opaque tensor cubes drawn on top.
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(BACKGROUND_COLOR);
 
   const camera = new THREE.PerspectiveCamera(
     45,
@@ -74,8 +76,9 @@ export function createSceneShell(container: HTMLElement): SceneShell {
   );
   camera.position.set(0, 0, 10);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0); // transparent — see scene.background note
   renderer.setSize(container.clientWidth, container.clientHeight);
   container.appendChild(renderer.domElement);
 

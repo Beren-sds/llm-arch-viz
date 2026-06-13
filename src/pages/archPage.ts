@@ -92,6 +92,9 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
   // createSceneShell mounts a .gl-error overlay and throws when WebGL2 is
   // absent; the caller (main/router) catches and surfaces the page error.
   const shell = createSceneShell(canvasHost);
+  // Vignette over the canvas (under the chrome): darkens the edges so the
+  // scene reads with depth and the eye settles on the centre.
+  canvasHost.appendChild(el("div", "viz-vignette"));
   const picker = new Picker(shell.camera, shell.renderer.domElement);
   const scene = deps.buildScene({ scene: shell.scene, picker });
   const chapters = deps.buildChapters(scene, i18n);

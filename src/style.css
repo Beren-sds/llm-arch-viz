@@ -106,18 +106,30 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
+  background:
+    radial-gradient(ellipse 90% 75% at 50% 38%, #161c28 0%, #0b0e15 55%, #07090e 100%);
 }
 
-/* Shared overlay-panel look: translucent, blurred, hairline border. */
+/* Edge-darkening vignette over the canvas (under the chrome). */
+.viz-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 82% 82% at 50% 44%, transparent 58%, rgba(4, 6, 10, 0.42) 100%);
+}
+
+/* Shared overlay-panel look: translucent, blurred, hairline border + lift. */
 .viz-topbar,
 .viz-sidebar,
 .viz-narration {
   position: absolute;
   z-index: 5;
-  background: rgba(15, 19, 28, 0.82);
-  border: 1px solid #232a39;
-  -webkit-backdrop-filter: blur(7px);
-  backdrop-filter: blur(7px);
+  background: rgba(16, 20, 30, 0.72);
+  border: 1px solid rgba(120, 140, 180, 0.14);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
 }
 
 .viz-topbar {

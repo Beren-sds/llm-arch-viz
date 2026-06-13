@@ -16,12 +16,15 @@ export interface RGB {
   b: number;
 }
 
-/** v = -scale: deep blue. */
-const NEG = { r: 0.13, g: 0.3, b: 0.85 } as const;
-/** v = 0: near-white. */
-const MID = { r: 0.96, g: 0.96, b: 0.97 } as const;
-/** v = +scale: deep red. */
-const POS = { r: 0.88, g: 0.18, b: 0.16 } as const;
+// Muted diverging palette: a calm light-slate zero that recedes on the dark
+// background, fanning to a soft blue and a warm coral rather than saturated
+// primaries — the saturated blue/red speckle read as noise, not data.
+/** v = -scale: soft blue. */
+export const NEG_COLOR = { r: 0.31, g: 0.52, b: 0.82 } as const;
+/** v = 0: soft light slate (not pure white — pure white glares on dark). */
+export const MID_COLOR = { r: 0.81, g: 0.82, b: 0.86 } as const;
+/** v = +scale: warm coral. */
+export const POS_COLOR = { r: 0.88, g: 0.46, b: 0.38 } as const;
 
 /** -Infinity (masked cells, e.g. GPT attention above the diagonal). */
 export const MASKED_COLOR: RGB = { r: 0.16, g: 0.18, b: 0.22 };
@@ -53,13 +56,13 @@ export function valueColor(v: number, scale: number, out: RGB): RGB {
   let t = v / scale;
   if (t > 1) t = 1;
   else if (t < -1) t = -1;
-  const end = t < 0 ? NEG : POS;
+  const end = t < 0 ? NEG_COLOR : POS_COLOR;
   const a = t < 0 ? -t : t;
   // Two-product lerp form is exact at a=0 and a=1 (hits MID/end precisely).
   const ia = 1 - a;
-  out.r = MID.r * ia + end.r * a;
-  out.g = MID.g * ia + end.g * a;
-  out.b = MID.b * ia + end.b * a;
+  out.r = MID_COLOR.r * ia + end.r * a;
+  out.g = MID_COLOR.g * ia + end.g * a;
+  out.b = MID_COLOR.b * ia + end.b * a;
   return out;
 }
 
