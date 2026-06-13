@@ -19,6 +19,7 @@ import type { Picker } from "../engine/picking";
 import type { I18n } from "../i18n/i18n";
 import type { SceneController } from "../scenes/sceneController";
 import { createArchPage, type ArchPage } from "./archPage";
+import type { TaskShape } from "./inputEditor";
 import { createLanding, type Landing } from "./landing";
 import { button, el } from "./dom";
 
@@ -47,6 +48,8 @@ export interface RouterDeps {
   archs: ArchDef[];
   /** Coming-soon card ids (shown disabled; not routable). */
   comingSoon: string[];
+  /** If given, each arch page mounts a live input-token editor. */
+  task?: TaskShape;
 }
 
 export type Route =
@@ -164,6 +167,7 @@ export function createRouter(deps: RouterDeps): { dispose(): void } {
         i18n,
         titleKey: def.titleKey,
         tokens: def.tokens,
+        task: deps.task,
         buildScene: ({ scene, picker }) => def.buildScene({ scene, picker, i18n }, loaded),
         buildChapters: def.buildChapters,
         initialChapterId: chapterId,

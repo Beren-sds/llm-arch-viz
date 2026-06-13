@@ -32,6 +32,7 @@ import type { ChapterRegistry, Chapter } from "../walkthrough/chapters";
 import type { I18n } from "../i18n/i18n";
 import type { SceneController } from "../scenes/sceneController";
 import { button, el } from "./dom";
+import { createInputEditor, type InputEditor, type TaskShape } from "./inputEditor";
 
 declare global {
   interface Window {
@@ -52,6 +53,8 @@ export interface ArchPageDeps {
   titleKey: string;
   /** The input sequence fed to the model (full-length). */
   tokens: number[];
+  /** If given, mounts a live token editor that re-forwards on edit. */
+  task?: TaskShape;
   /** Build the 3D scene into `scene`, registering pick targets on `picker`. */
   buildScene: (ctx: { scene: THREE.Scene; picker: Picker }) => SceneController;
   /** Build the chapter registry over the just-built scene. */
@@ -83,7 +86,10 @@ function titleKeyOf(ch: Chapter): string {
 const IDLE_ORBIT_MS = 6000;
 
 export function createArchPage(deps: ArchPageDeps): ArchPage {
-  const { container, i18n, tokens } = deps;
+  const { container, i18n } = deps;
+  // Mutable: the live input editor reassigns this on every edit, and
+  // goToChapter restores the full sequence from it when leaving a chapter.
+  let tokens = deps.tokens.slice();
 
   // ---- DOM scaffold ---------------------------------------------------------
   const root = el("div", "viz-page");
@@ -190,6 +196,25 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
 
   root.append(topbar, sidebar, narration);
 
+  // ---- chrome: live input editor (optional) ---------------------------------
+  let inputEditor: InputEditor | null = null;
+  if (deps.task) {
+    inputEditor = createInputEditor({
+      task: deps.task,
+      initial: tokens,
+      i18n,
+      onChange: (t) => {
+        tokens = t;
+        if (timeline.state === "playing") timeline.pause();
+        scene.setTokens(tokens); // live re-forward with the edited input
+        slider.value = "0";
+        sliderVal.textContent = "0";
+        updatePlayLabel();
+      },
+    });
+    root.appendChild(inputEditor.el);
+  }
+
   // ---- chapter state machine ------------------------------------------------
   let current = 0;
   let focused: string[] = [];
@@ -274,6 +299,7 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
     playBtn.disabled = !hasTimeline;
     sliderRow.classList.toggle("is-hidden", !hasTimeline);
     updatePlayLabel();
+    inputEditor?.relabel();
   }
 
   // ---- render loop ----------------------------------------------------------
@@ -308,6 +334,7 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
   const ready = labelsReady(...scene.labelObjects);
 
   function dispose(): void {
+    inputEditor?.dispose();
     timeline.stop();
     tour.cancel();
     controls.dispose();

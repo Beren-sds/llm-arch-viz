@@ -8,10 +8,22 @@ import { buildMoeScene, buildMoeChapters, MOE_SEQ_LEN } from "./scenes/moe";
 import { buildKanScene, buildKanChapters, KAN_SEQ_LEN } from "./scenes/kan";
 import { buildDiffusionScene, buildDiffusionChapters, DIFFUSION_SEQ_LEN } from "./scenes/diffusion";
 import { createRouter, type ArchDef } from "./pages/router";
+import type { TaskShape } from "./pages/inputEditor";
 
 // The shared selective-copying input every architecture runs (Task 3's
 // sanity example): 9 = NOISE, 10 = GO, the tail repeats the 4 data tokens.
 const SELECTIVE_COPY_INPUT = [9, 4, 9, 9, 9, 1, 9, 4, 9, 6, 9, 9, 9, 9, 9, 9, 10, 4, 1, 4, 6];
+
+// Selective-copying task shape (mirrors training/config.yaml `task`); drives
+// the live input editor so users can edit the data tokens and re-forward.
+const TASK: TaskShape = {
+  vocabSize: 16,
+  nData: 4,
+  contextLen: 16,
+  dataIds: [1, 2, 3, 4, 5, 6, 7, 8],
+  noiseId: 9,
+  goId: 10,
+};
 
 function requireEl(selector: string): HTMLDivElement {
   const node = document.querySelector<HTMLDivElement>(selector);
@@ -92,4 +104,5 @@ createRouter({
   baseUrl: import.meta.env.BASE_URL,
   archs,
   comingSoon: [],
+  task: TASK,
 });
