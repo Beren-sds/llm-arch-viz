@@ -12,21 +12,26 @@
  */
 
 import type { T } from "../compute/tensor";
-import type { TensorView } from "../engine/tensorView";
 
 /**
  * What a scene exposes to its timelines. The scene owns the name → view
  * mapping, model re-execution, and the picker; the timeline only issues
  * intents through these channels.
+ *
+ * OWNERSHIP: while a TimelinePlayer is playing, the binding owns
+ * highlight/dim EXCLUSIVELY — no other code may call setHighlight/setDim
+ * on the same views, or the player's exit/stop cleanup will fight it.
  */
 export interface SceneBinding {
-  /** Activation/weight name → view (scene-owned; for the scene's own use). */
-  views: Map<string, TensorView>;
-  /** Re-run the model on tokens[0..uptoToken]; returns activations by name. */
+  /**
+   * Re-run the model on the prefix tokens[0..uptoToken] — INCLUSIVE:
+   * uptoToken is the index of the LAST token fed, so uptoToken=0 runs a
+   * 1-token prefix. Returns activations by name.
+   */
   runForward(uptoToken: number): Map<string, T>;
   /** Push activations into the views (and picker.requestRepick()). */
   applyActivations(acts: Map<string, T>): void;
-  /** Toggle highlight on the named objects. */
+  /** Toggle highlight on the named objects. MUST be idempotent. */
   setHighlight(names: string[], on: boolean): void;
   /** Dim everything NOT in the list; null = undim all. */
   setDim(namesNotIn: string[] | null): void;
@@ -110,9 +115,11 @@ export class TimelinePlayer {
   }
 
   /**
-   * Load a spec (steps array is copied — the caller may mutate theirs).
-   * Loading while a run is active behaves like stop(): visuals are
-   * cleared and the player returns to 'idle' at step 0.
+   * Load a spec. The steps ARRAY is shallow-copied — swapping/reordering
+   * the caller's array afterwards is safe, but the step OBJECTS are
+   * shared: don't mutate them after load(). Loading while a run is
+   * active behaves like stop(): visuals are cleared and the player
+   * returns to 'idle' at step 0.
    */
   load(spec: TimelineSpec): void {
     this.stop();
@@ -180,6 +187,20 @@ export class TimelinePlayer {
     this.stepElapsedMs += delta;
 
     const { steps, loop } = this.spec;
+    // Background-tab catch-up: when looping and the delta spans MULTIPLE
+    // full passes of the spec, reduce the surplus modulo the spec's total
+    // duration BEFORE cascading — each step then fires at most once for
+    // finishing the current pass plus once in the final partial pass,
+    // instead of replaying every skipped loop N times.
+    if (loop) {
+      let total = 0;
+      for (const s of steps) total += this.durationOf(s);
+      let rest = 0; // full durations of the current step through the last
+      for (let i = this.index; i < steps.length; i++) rest += this.durationOf(steps[i]);
+      if (this.stepElapsedMs >= rest + total) {
+        this.stepElapsedMs = rest + ((this.stepElapsedMs - rest) % total);
+      }
+    }
     // Cascade across boundaries. The loop guard stops the walk when an
     // onStepStart callback called stop()/pause(); the entering step's own
     // effect is guarded inside enterStep (it re-checks phase after the

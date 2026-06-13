@@ -1,16 +1,29 @@
 import "./style.css";
+import * as THREE from "three";
 import { createSceneShell } from "./engine/scene";
 import { OrbitControls } from "./engine/controls";
-import { TensorView } from "./engine/tensorView";
 import { Picker } from "./engine/picking";
 import { Tooltip } from "./engine/tooltip";
-import {
-  createDimBracket,
-  createTensorLabel,
-  labelsReady,
-  makeBillboard,
-} from "./engine/labels";
-import { T } from "./compute/tensor";
+import { labelsReady } from "./engine/labels";
+import { loadModel } from "./compute/loader";
+import { buildMambaScene, MAMBA_SEQ_LEN } from "./scenes/mamba";
+
+// A valid 21-token selective-copying input (Task 3's sanity-check example):
+// 9 = NOISE, 10 = the recall marker, the tail repeats the data tokens.
+// Task 22 replaces this with a proper input UI.
+const EXAMPLE_TOKENS = [9, 4, 9, 9, 9, 1, 9, 4, 9, 6, 9, 9, 9, 9, 9, 9, 10, 4, 1, 4, 6];
+
+/** Debug/test hooks for scripts/hover-check.mjs (see bottom of file). */
+declare global {
+  interface Window {
+    __viz?: {
+      /** Screen (client px) center of cell (row, col) of the named view. */
+      cellScreen(name: string, row: number, col: number): { x: number; y: number } | null;
+      /** Current value at (row, col) of the named 2D view. */
+      cellValue(name: string, row: number, col: number): number | null;
+    };
+  }
+}
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) {
@@ -19,90 +32,65 @@ if (!app) {
 
 const shell = createSceneShell(app);
 
-// Demo tensor: deterministic 48x96 test pattern (no network in this task).
-// sin/cos interference gives a smooth diverging blue/white/red field; the
-// top-left corner carries a few NaN (magenta) and -Infinity (dark slate)
-// cells to eyeball the special colors end-to-end.
-const ROWS = 48;
-const COLS = 96;
-const values = new Float32Array(ROWS * COLS);
-for (let i = 0; i < ROWS; i++) {
-  for (let j = 0; j < COLS; j++) {
-    values[i * COLS + j] = Math.sin(i * 0.3) + Math.cos(j * 0.2);
-  }
-}
-for (let i = 0; i < 3; i++) {
-  for (let j = 0; j < 3; j++) {
-    values[i * COLS + j] = NaN; // magenta cluster
-    values[i * COLS + (j + 4)] = -Infinity; // dark-slate cluster
-  }
-}
-const demo = T.from(values, [ROWS, COLS]);
-
-const CELL = 1;
-const GAP = 0.25;
-const PITCH = CELL + GAP;
-const view = new TensorView("demo", [ROWS, COLS], {
-  cellSize: CELL,
-  gap: GAP,
-  // Center the grid on the world origin (row 0 on top, per TensorView docs).
-  origin: [(-(COLS - 1) * PITCH) / 2, ((ROWS - 1) * PITCH) / 2, 0],
-});
-view.setValues(demo);
-shell.scene.add(view.mesh);
-
-// Labels: a billboarded title above the grid + two fixed dimension brackets.
-// Grid extents (outer cube faces): x ±(COLS-1)·PITCH/2 + CELL/2, same for y.
-const halfW = ((COLS - 1) * PITCH) / 2 + CELL / 2; // 59.875
-const halfH = ((ROWS - 1) * PITCH) / 2 + CELL / 2; // 29.875
-const title = createTensorLabel("demo (48×96)", { size: 5 });
-// anchorY is "top": position is the top-center of the text block, so the
-// glyphs hang from y=38 down to ~33 — a ~3-unit gap above the grid edge.
-title.position.set(0, 38, 0);
-shell.scene.add(title);
-const updateTitleBillboard = makeBillboard(title); // title only; brackets stay fixed
-
-const colsBracket = createDimBracket({
-  from: [-halfW, -halfH, 0],
-  to: [halfW, -halfH, 0],
-  offset: -2, // below the grid, ticks pointing down
-  label: "96 cols",
-});
-const rowsBracket = createDimBracket({
-  from: [-halfW, halfH, 0],
-  to: [-halfW, -halfH, 0],
-  offset: -2, // left of the grid, ticks pointing left; label rotated π/2
-  label: "48 rows",
-});
-shell.scene.add(colsBracket, rowsBracket);
-
-// troika typesets SDF glyphs asynchronously (default font is fetched on
-// first use): labels render as nothing for a few frames. Surface completion
-// on <body data-settled> so the screenshot harness can wait for real text
-// instead of guessing with a longer sleep.
+// Async-settle handshake for the screenshot harness: "0" until the model
+// is loaded, the scene is built, and every troika label finished its
+// async typeset (see labelsReady). A load failure leaves it at "0" and
+// the error propagates — no fake scene is ever shown (Task 22 adds the
+// visible retry panel).
 document.body.dataset.settled = "0";
-void labelsReady(title, colsBracket, rowsBracket).then(() => {
-  document.body.dataset.settled = "1";
-});
 
-// Frame the grid: width ~120 world units; at fov 45 a distance of 160
-// keeps the full grid in view down to square-ish aspect ratios.
-shell.camera.position.set(0, 0, 160);
-const controls = new OrbitControls(shell.camera, shell.renderer.domElement);
-controls.target.set(0, 0, 0);
+const { manifest, weights } = await loadModel("mamba", import.meta.env.BASE_URL);
 
-// Hover picking -> tooltip: the Picker stores the latest pointermove and
-// raycasts at most once per frame (picker.update() in the render loop).
 const picker = new Picker(shell.camera, shell.renderer.domElement);
-picker.add({ view, formula: "demo[i, j] = sin(0.3·i) + cos(0.2·j)" });
+const scene = buildMambaScene({ scene: shell.scene, weights, manifest, picker });
+if (EXAMPLE_TOKENS.length !== MAMBA_SEQ_LEN) {
+  throw new Error(`EXAMPLE_TOKENS must have ${MAMBA_SEQ_LEN} tokens`);
+}
+scene.setTokens(EXAMPLE_TOKENS);
+
+// Camera: start at the scene's home framing (whole spine). Debug aid:
+// ?anchor=<name> (e.g. ?anchor=scan0) starts at a named anchor instead.
+const anchorName = new URLSearchParams(location.search).get("anchor");
+const startView = (anchorName ? scene.anchors.get(anchorName) : undefined) ?? scene.cameraHome;
+shell.camera.position.set(...startView.pos);
+const controls = new OrbitControls(shell.camera, shell.renderer.domElement);
+controls.target.set(...startView.target);
+
 const tooltip = new Tooltip(app);
 picker.onPick = (result, x, y) => {
   if (result) tooltip.show(result, x, y);
   else tooltip.hide();
 };
 
+void labelsReady(...scene.labelObjects).then(() => {
+  document.body.dataset.settled = "1";
+});
+
 shell.start(() => {
   controls.update();
   picker.update();
-  updateTitleBillboard(shell.camera);
+  scene.update(shell.camera);
 });
+
+// ---- hover-check.mjs hooks (cheap; no effect on the app itself) -------------
+
+window.__viz = {
+  cellScreen(name, row, col) {
+    const view = scene.views.get(name);
+    if (!view || view.shape.length !== 2) return null;
+    const pitch = view.layout.cellSize + view.layout.gap;
+    const [ox, oy, oz] = view.layout.origin;
+    const v = new THREE.Vector3(ox + col * pitch, oy - row * pitch, oz);
+    v.project(shell.camera);
+    const rect = shell.renderer.domElement.getBoundingClientRect();
+    return {
+      x: rect.left + ((v.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - v.y) / 2) * rect.height,
+    };
+  },
+  cellValue(name, row, col) {
+    const view = scene.views.get(name);
+    if (!view || view.shape.length !== 2) return null;
+    return view.lastValues[row * view.shape[1] + col];
+  },
+};

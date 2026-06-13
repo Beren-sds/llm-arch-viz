@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import type { T } from "../compute/tensor";
-import type { TensorView } from "../engine/tensorView";
 import {
   type SceneBinding,
   type TimelineSpec,
@@ -12,7 +11,6 @@ import {
 function makeBinding() {
   const acts = new Map<string, T>();
   const binding = {
-    views: new Map<string, TensorView>(),
     runForward: vi.fn((_uptoToken: number) => acts),
     applyActivations: vi.fn(),
     setHighlight: vi.fn(),
@@ -276,6 +274,36 @@ describe("loop", () => {
       [["a"], true],
       [["a"], true],
     ]);
+  });
+
+  it("a background-tab-sized delta wraps modulo the total duration, no N-times replay", () => {
+    const { binding, player } = loadAndPlay({
+      steps: [highlight(["a"], 100), wait(100)],
+      loop: true,
+    });
+    player.update(0);
+    player.update(1_000_000); // 5000 full loops in one delta
+    // Without the modulo reduction this would re-enter the highlight step
+    // ~5000 times. With it: once at play() + once for the final wrap.
+    const onCalls = binding.setHighlight.mock.calls.filter(([, on]) => on === true);
+    expect(onCalls).toHaveLength(2);
+    // Landing phase is exact: 1_000_000 % 200 == 0 -> start of step 0.
+    expect(player.stepIndex).toBe(0);
+    expect(player.state).toBe("playing");
+  });
+
+  it("modulo catch-up lands mid-step at the correct offset", () => {
+    const { player } = loadAndPlay({
+      steps: [wait(100), wait(100)],
+      loop: true,
+    });
+    player.update(0);
+    player.update(100_150); // 100_150 % 200 = 150 -> 50ms into step 1
+    expect(player.stepIndex).toBe(1);
+    player.update(100_199); // +49ms = 99ms into step 1: still there
+    expect(player.stepIndex).toBe(1);
+    player.update(100_200); // +1ms = 100ms: wraps to step 0
+    expect(player.stepIndex).toBe(0);
   });
 
   it("does not fire onComplete while looping", () => {

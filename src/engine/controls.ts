@@ -21,7 +21,10 @@ export class OrbitControls {
     this.inner.enableDamping = true;
     this.inner.dampingFactor = 0.08;
     this.inner.minDistance = 5;
-    this.inner.maxDistance = 800;
+    // The Mamba scene spine is ~750 world units tall; its home framing
+    // sits ~950 out, so the zoom-out clamp must stay beyond that (camera
+    // far plane is 2000 in createSceneShell).
+    this.inner.maxDistance = 1500;
   }
 
   /** The point the camera orbits around; mutate or copy into it, then update(). */
