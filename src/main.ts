@@ -5,6 +5,7 @@ import { buildMambaScene, buildMambaChapters, MAMBA_SEQ_LEN } from "./scenes/mam
 import { buildGptScene, buildGptChapters, GPT_SEQ_LEN } from "./scenes/gpt";
 import { buildRwkvScene, buildRwkvChapters, RWKV_SEQ_LEN } from "./scenes/rwkv";
 import { buildMoeScene, buildMoeChapters, MOE_SEQ_LEN } from "./scenes/moe";
+import { buildKanScene, buildKanChapters, KAN_SEQ_LEN } from "./scenes/kan";
 import { createRouter, type ArchDef } from "./pages/router";
 
 // The shared selective-copying input every architecture runs (Task 3's
@@ -23,7 +24,8 @@ if (
   SELECTIVE_COPY_INPUT.length !== MAMBA_SEQ_LEN ||
   SELECTIVE_COPY_INPUT.length !== GPT_SEQ_LEN ||
   SELECTIVE_COPY_INPUT.length !== RWKV_SEQ_LEN ||
-  SELECTIVE_COPY_INPUT.length !== MOE_SEQ_LEN
+  SELECTIVE_COPY_INPUT.length !== MOE_SEQ_LEN ||
+  SELECTIVE_COPY_INPUT.length !== KAN_SEQ_LEN
 ) {
   throw new Error("SELECTIVE_COPY_INPUT length must match all scene sequence lengths");
 }
@@ -64,6 +66,14 @@ const archs: ArchDef[] = [
       buildMoeScene({ scene, weights: model.weights, manifest: model.manifest, picker, i18n: i }),
     buildChapters: buildMoeChapters,
   },
+  {
+    id: "kan",
+    titleKey: "scene.kan.title",
+    tokens: SELECTIVE_COPY_INPUT,
+    buildScene: ({ scene, picker, i18n: i }, model) =>
+      buildKanScene({ scene, weights: model.weights, manifest: model.manifest, picker, i18n: i }),
+    buildChapters: buildKanChapters,
+  },
 ];
 
 createRouter({
@@ -71,5 +81,5 @@ createRouter({
   i18n,
   baseUrl: import.meta.env.BASE_URL,
   archs,
-  comingSoon: ["kan", "retnet"],
+  comingSoon: ["retnet"],
 });

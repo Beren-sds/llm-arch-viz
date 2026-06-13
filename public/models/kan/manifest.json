@@ -1,0 +1,251 @@
+{
+  "arch": "kan",
+  "offset_unit": "float32",
+  "dims": {
+    "n_layer": 2,
+    "d_model": 48,
+    "n_head": 3,
+    "num_grids": 8,
+    "grid_min": -2.0,
+    "grid_max": 2.0,
+    "vocab_size": 16,
+    "head_dim": 16,
+    "max_seq_len": 32
+  },
+  "checkpoint": {
+    "run_dir": "outputs/kan/20260613T122811Z-927b297",
+    "step": 500,
+    "val_exact": 1.0,
+    "golden_seed": 1131,
+    "golden_candidates_skipped": 0
+  },
+  "tensors": [
+    {
+      "name": "attns.0.out_proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 0,
+      "length": 48
+    },
+    {
+      "name": "attns.0.out_proj.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 48,
+      "length": 2304
+    },
+    {
+      "name": "attns.0.qkv_proj.bias",
+      "shape": [
+        144
+      ],
+      "offset": 2352,
+      "length": 144
+    },
+    {
+      "name": "attns.0.qkv_proj.weight",
+      "shape": [
+        144,
+        48
+      ],
+      "offset": 2496,
+      "length": 6912
+    },
+    {
+      "name": "attns.1.out_proj.bias",
+      "shape": [
+        48
+      ],
+      "offset": 9408,
+      "length": 48
+    },
+    {
+      "name": "attns.1.out_proj.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 9456,
+      "length": 2304
+    },
+    {
+      "name": "attns.1.qkv_proj.bias",
+      "shape": [
+        144
+      ],
+      "offset": 11760,
+      "length": 144
+    },
+    {
+      "name": "attns.1.qkv_proj.weight",
+      "shape": [
+        144,
+        48
+      ],
+      "offset": 11904,
+      "length": 6912
+    },
+    {
+      "name": "kans.0.base_linear.bias",
+      "shape": [
+        48
+      ],
+      "offset": 18816,
+      "length": 48
+    },
+    {
+      "name": "kans.0.base_linear.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 18864,
+      "length": 2304
+    },
+    {
+      "name": "kans.0.spline_linear.weight",
+      "shape": [
+        48,
+        384
+      ],
+      "offset": 21168,
+      "length": 18432
+    },
+    {
+      "name": "kans.1.base_linear.bias",
+      "shape": [
+        48
+      ],
+      "offset": 39600,
+      "length": 48
+    },
+    {
+      "name": "kans.1.base_linear.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 39648,
+      "length": 2304
+    },
+    {
+      "name": "kans.1.spline_linear.weight",
+      "shape": [
+        48,
+        384
+      ],
+      "offset": 41952,
+      "length": 18432
+    },
+    {
+      "name": "lm_head.weight",
+      "shape": [
+        16,
+        48
+      ],
+      "offset": 60384,
+      "length": 768
+    },
+    {
+      "name": "ln1s.0.bias",
+      "shape": [
+        48
+      ],
+      "offset": 61152,
+      "length": 48
+    },
+    {
+      "name": "ln1s.0.weight",
+      "shape": [
+        48
+      ],
+      "offset": 61200,
+      "length": 48
+    },
+    {
+      "name": "ln1s.1.bias",
+      "shape": [
+        48
+      ],
+      "offset": 61248,
+      "length": 48
+    },
+    {
+      "name": "ln1s.1.weight",
+      "shape": [
+        48
+      ],
+      "offset": 61296,
+      "length": 48
+    },
+    {
+      "name": "ln2s.0.bias",
+      "shape": [
+        48
+      ],
+      "offset": 61344,
+      "length": 48
+    },
+    {
+      "name": "ln2s.0.weight",
+      "shape": [
+        48
+      ],
+      "offset": 61392,
+      "length": 48
+    },
+    {
+      "name": "ln2s.1.bias",
+      "shape": [
+        48
+      ],
+      "offset": 61440,
+      "length": 48
+    },
+    {
+      "name": "ln2s.1.weight",
+      "shape": [
+        48
+      ],
+      "offset": 61488,
+      "length": 48
+    },
+    {
+      "name": "ln_f.bias",
+      "shape": [
+        48
+      ],
+      "offset": 61536,
+      "length": 48
+    },
+    {
+      "name": "ln_f.weight",
+      "shape": [
+        48
+      ],
+      "offset": 61584,
+      "length": 48
+    },
+    {
+      "name": "pos_embedding.weight",
+      "shape": [
+        32,
+        48
+      ],
+      "offset": 61632,
+      "length": 1536
+    },
+    {
+      "name": "tok_embedding.weight",
+      "shape": [
+        16,
+        48
+      ],
+      "offset": 63168,
+      "length": 768
+    }
+  ]
+}

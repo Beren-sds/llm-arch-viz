@@ -34,6 +34,14 @@ moe:
   n_experts: 4
   top_k: 2
 
+kan:
+  n_layer: 2
+  d_model: 48
+  n_head: 3
+  num_grids: 8
+  grid_min: -2.0
+  grid_max: 2.0
+
 train:
   steps: 20000
   batch_size: 256

@@ -35,6 +35,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from llmviz_train.gpt import GPT
+from llmviz_train.kan import KAN
 from llmviz_train.mamba import Mamba
 from llmviz_train.moe import MoEModel
 from llmviz_train.rwkv import RWKV
@@ -57,7 +58,9 @@ def build_model(arch: str, cfg: dict) -> nn.Module:
         return RWKV(cfg["rwkv"], vocab_size=vocab_size)
     if arch == "moe":
         return MoEModel(cfg["moe"], vocab_size=vocab_size)
-    raise ValueError(f"unknown arch {arch!r} (expected 'mamba', 'gpt', 'rwkv' or 'moe')")
+    if arch == "kan":
+        return KAN(cfg["kan"], vocab_size=vocab_size)
+    raise ValueError(f"unknown arch {arch!r} (expected mamba, gpt, rwkv, moe or kan)")
 
 
 def atomic_save(obj: object, path: Path) -> None:

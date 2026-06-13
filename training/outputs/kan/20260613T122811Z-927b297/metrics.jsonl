@@ -1,0 +1,3 @@
+{"step": 250, "train_loss": 0.1896524429321289, "val_exact": 0.79345703125, "val_per_token": 0.9466552734375, "lr": 0.0009999842657116666, "elapsed_s": 5.78}
+{"step": 500, "train_loss": 0.007999223656952381, "val_exact": 1.0, "val_per_token": 1.0, "lr": 0.000999433669591504, "elapsed_s": 11.45}
+{"step": 750, "train_loss": 0.0034686045255512, "val_exact": 1.0, "val_per_token": 1.0, "lr": 0.0009980973490458728, "elapsed_s": 17.08}
