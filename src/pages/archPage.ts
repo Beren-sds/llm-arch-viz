@@ -31,6 +31,7 @@ import { TimelinePlayer } from "../walkthrough/timeline";
 import type { ChapterRegistry, Chapter } from "../walkthrough/chapters";
 import type { I18n } from "../i18n/i18n";
 import type { SceneController } from "../scenes/sceneController";
+import { button, el } from "./dom";
 
 declare global {
   interface Window {
@@ -59,30 +60,18 @@ export interface ArchPageDeps {
   initialChapterId?: string;
   /** Notified whenever the active chapter changes (router updates the URL). */
   onChapterChange?: (chapterId: string) => void;
+  /** If given, a "‹ Atlas" link in the top bar invokes this (back to landing). */
+  onHome?: () => void;
 }
 
 export interface ArchPage {
   /** Current chapter id (for URL sync / locale-rebuild restore). */
   readonly chapterId: string;
+  /** Navigate to a chapter by id (deep link from the router); no-op if unknown. */
+  goToChapterId(id: string): void;
   /** Resolves once every troika label has typeset (screenshot handshake). */
   readonly ready: Promise<void>;
   dispose(): void;
-}
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className: string,
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  node.className = className;
-  return node;
-}
-
-function button(className: string): HTMLButtonElement {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = className;
-  return b;
 }
 
 /** narrationKey `…​.body` → the sidebar title key `…​.title`. */
@@ -130,13 +119,16 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
 
   // ---- chrome: top bar ------------------------------------------------------
   const topbar = el("div", "viz-topbar");
+  const homeBtn = button("viz-home");
+  if (deps.onHome) homeBtn.addEventListener("click", deps.onHome);
+  else homeBtn.hidden = true;
   const titleEl = el("div", "viz-title");
   const counterEl = el("div", "viz-counter");
   const langBtn = button("viz-lang");
   langBtn.addEventListener("click", () => {
     i18n.setLocale(i18n.locale === "en" ? "zh" : "en");
   });
-  topbar.append(titleEl, counterEl, langBtn);
+  topbar.append(homeBtn, titleEl, counterEl, langBtn);
 
   // ---- chrome: chapter sidebar ----------------------------------------------
   const sidebar = el("nav", "viz-sidebar");
@@ -244,6 +236,7 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
 
   function renderChrome(): void {
     titleEl.textContent = i18n.t(deps.titleKey);
+    homeBtn.textContent = `‹ ${i18n.t("ui.home")}`;
     langBtn.textContent = i18n.t("ui.langToggle");
     sidebarH.textContent = i18n.t("ui.chapters");
     prevBtn.textContent = i18n.t("ui.prev");
@@ -313,6 +306,10 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
   return {
     get chapterId(): string {
       return chapters.get(current).id;
+    },
+    goToChapterId(id: string): void {
+      const idx = chapters.indexOf(id);
+      if (idx >= 0) goToChapter(idx);
     },
     ready,
     dispose,

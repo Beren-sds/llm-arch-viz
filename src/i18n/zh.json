@@ -41,5 +41,22 @@
   "ui.loading": "正在加载模型权重…",
   "ui.loadError": "模型数据加载失败。",
   "ui.retry": "重试",
-  "ui.webglError": "当前浏览器无法使用 WebGL。请尝试更新浏览器，或开启硬件加速。"
+  "ui.webglError": "当前浏览器无法使用 WebGL。请尝试更新浏览器，或开启硬件加速。",
+  "ui.home": "图谱",
+  "ui.landing.title": "超越 Transformer",
+  "ui.landing.subtitle": "LLM 架构的 3D 张量级巡览——真实的玩具权重，在你的浏览器里实时计算。同一个选择性复制任务，许多种不同的机器。",
+  "ui.open": "进入",
+  "ui.comingSoon": "敬请期待",
+  "card.mamba.title": "Mamba",
+  "card.mamba.desc": "选择性状态空间——固定大小的递推状态，配一个依赖输入的门控。",
+  "card.gpt.title": "GPT",
+  "card.gpt.desc": "因果自注意力——Transformer 基线。",
+  "card.rwkv.title": "RWKV",
+  "card.rwkv.desc": "线性注意力 / RNN 混合体。",
+  "card.moe.title": "专家混合 (MoE)",
+  "card.moe.desc": "每个 token 稀疏路由到少数几个专家 MLP。",
+  "card.kan.title": "KAN",
+  "card.kan.desc": "Kolmogorov–Arnold 网络——边上可学习的激活函数。",
+  "card.retnet.title": "RetNet / Hyena",
+  "card.retnet.desc": "用保持机制与长卷积替代注意力。"
 }

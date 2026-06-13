@@ -1,14 +1,13 @@
 import "./style.css";
 import { I18n } from "./i18n/i18n";
 import { DICTS } from "./i18n/dicts";
-import { loadModel, type LoadedModel } from "./compute/loader";
 import { buildMambaScene, buildMambaChapters, MAMBA_SEQ_LEN } from "./scenes/mamba";
-import { createArchPage, type ArchPage } from "./pages/archPage";
+import { buildGptScene, buildGptChapters, GPT_SEQ_LEN } from "./scenes/gpt";
+import { createRouter, type ArchDef } from "./pages/router";
 
-// A valid 21-token selective-copying input (Task 3's sanity-check example):
-// 9 = NOISE, 10 = GO, the tail repeats the 4 data tokens in order.
-// Task 22 replaces this with a landing page + an input UI + routing.
-const EXAMPLE_TOKENS = [9, 4, 9, 9, 9, 1, 9, 4, 9, 6, 9, 9, 9, 9, 9, 9, 10, 4, 1, 4, 6];
+// The shared selective-copying input every architecture runs (Task 3's
+// sanity example): 9 = NOISE, 10 = GO, the tail repeats the 4 data tokens.
+const SELECTIVE_COPY_INPUT = [9, 4, 9, 9, 9, 1, 9, 4, 9, 6, 9, 9, 9, 9, 9, 9, 10, 4, 1, 4, 6];
 
 function requireEl(selector: string): HTMLDivElement {
   const node = document.querySelector<HTMLDivElement>(selector);
@@ -18,48 +17,36 @@ function requireEl(selector: string): HTMLDivElement {
   return node;
 }
 
-// Declared (not flow-narrowed) non-null type so the mount() closure keeps it.
-const app = requireEl("#app");
-if (EXAMPLE_TOKENS.length !== MAMBA_SEQ_LEN) {
-  throw new Error(`EXAMPLE_TOKENS must have ${MAMBA_SEQ_LEN} tokens`);
+if (SELECTIVE_COPY_INPUT.length !== MAMBA_SEQ_LEN || SELECTIVE_COPY_INPUT.length !== GPT_SEQ_LEN) {
+  throw new Error("SELECTIVE_COPY_INPUT length must match both scene sequence lengths");
 }
 
+const app = requireEl("#app");
 const i18n = new I18n(DICTS);
 
-let page: ArchPage | null = null;
-let model: LoadedModel | null = null;
-
-/**
- * Mount the Mamba page at `chapterId` (or its first chapter). The screenshot
- * harness watches document.body.dataset.settled: "0" until the model loads,
- * the scene builds, and every troika label has typeset. A load failure
- * leaves it at "0" and the error propagates — no fake scene is shown (Task
- * 22 adds the visible retry panel).
- */
-async function mount(chapterId?: string): Promise<void> {
-  document.body.dataset.settled = "0";
-  page?.dispose();
-  // Fetch once; locale rebuilds reuse the cached weights.
-  if (!model) model = await loadModel("mamba", import.meta.env.BASE_URL);
-  const { manifest, weights } = model;
-  page = createArchPage({
-    container: app,
-    i18n,
+const archs: ArchDef[] = [
+  {
+    id: "mamba",
     titleKey: "scene.mamba.title",
-    tokens: EXAMPLE_TOKENS,
-    buildScene: ({ scene, picker }) => buildMambaScene({ scene, weights, manifest, picker, i18n }),
+    tokens: SELECTIVE_COPY_INPUT,
+    buildScene: ({ scene, picker, i18n: i }, model) =>
+      buildMambaScene({ scene, weights: model.weights, manifest: model.manifest, picker, i18n: i }),
     buildChapters: buildMambaChapters,
-    initialChapterId: chapterId,
-  });
-  void page.ready.then(() => {
-    document.body.dataset.settled = "1";
-  });
-}
+  },
+  {
+    id: "gpt",
+    titleKey: "scene.gpt.title",
+    tokens: SELECTIVE_COPY_INPUT,
+    buildScene: ({ scene, picker, i18n: i }, model) =>
+      buildGptScene({ scene, weights: model.weights, manifest: model.manifest, picker, i18n: i }),
+    buildChapters: buildGptChapters,
+  },
+];
 
-// Locale toggle → rebuild in place at the same chapter (the 3D title label is
-// baked per build, so a swap is the clean way to retranslate the whole page).
-i18n.onChange(() => {
-  void mount(page?.chapterId);
+createRouter({
+  container: app,
+  i18n,
+  baseUrl: import.meta.env.BASE_URL,
+  archs,
+  comingSoon: ["rwkv", "moe", "kan", "retnet"],
 });
-
-await mount();

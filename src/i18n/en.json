@@ -41,5 +41,22 @@
   "ui.loading": "Loading model weights…",
   "ui.loadError": "Couldn't load the model data.",
   "ui.retry": "Retry",
-  "ui.webglError": "WebGL isn't available in this browser. Try updating it or turning on hardware acceleration."
+  "ui.webglError": "WebGL isn't available in this browser. Try updating it or turning on hardware acceleration.",
+  "ui.home": "Atlas",
+  "ui.landing.title": "Beyond Transformers",
+  "ui.landing.subtitle": "A 3D, tensor-level tour of LLM architectures — real toy weights, computed live in your browser. The same selective-copying task, many different machines.",
+  "ui.open": "Open",
+  "ui.comingSoon": "Coming soon",
+  "card.mamba.title": "Mamba",
+  "card.mamba.desc": "Selective state space — a fixed-size recurrent state with an input-dependent gate.",
+  "card.gpt.title": "GPT",
+  "card.gpt.desc": "Causal self-attention — the Transformer baseline.",
+  "card.rwkv.title": "RWKV",
+  "card.rwkv.desc": "A linear-attention / RNN hybrid.",
+  "card.moe.title": "Mixture of Experts",
+  "card.moe.desc": "Sparse routing to a few expert MLPs per token.",
+  "card.kan.title": "KAN",
+  "card.kan.desc": "Kolmogorov–Arnold networks — learnable activations on edges.",
+  "card.retnet.title": "RetNet / Hyena",
+  "card.retnet.desc": "Retention and long convolutions as attention alternatives."
 }
