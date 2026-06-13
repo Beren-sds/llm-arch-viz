@@ -1,4 +1,11 @@
 {
+  "diffusion": {
+    "best_val_exact": 0.99658203125,
+    "finished_utc": "2026-06-13T13:16:43Z",
+    "git_short": "3bc129f",
+    "run_dir": "outputs/diffusion/20260613T131030Z-3bc129f",
+    "step": 13000
+  },
   "gpt": {
     "best_val_exact": 1.0,
     "finished_utc": "2026-06-12T06:10:43Z",

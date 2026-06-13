@@ -51,7 +51,9 @@ def update_runs_json(arch: str, entry: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--arch", required=True, choices=["mamba", "gpt", "rwkv", "moe", "kan"])
+    parser.add_argument(
+        "--arch", required=True, choices=["mamba", "gpt", "rwkv", "moe", "kan", "diffusion"]
+    )
     args = parser.parse_args()
 
     cfg = load_config()
@@ -73,7 +75,12 @@ def main() -> None:
         f.write("\n")
 
     print(f"run dir: {run_dir}")
-    result = train_loop(args.arch, cfg, out_dir=run_dir)
+    if args.arch == "diffusion":
+        from llmviz_train.diffusion_train import train_diffusion
+
+        result = train_diffusion(cfg, out_dir=run_dir)
+    else:
+        result = train_loop(args.arch, cfg, out_dir=run_dir)
 
     target = cfg["train"]["val_acc_target"]
     if result["best_val_exact"] < target:

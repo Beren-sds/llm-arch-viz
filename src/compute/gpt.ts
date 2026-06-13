@@ -93,6 +93,7 @@ export function causalSelfAttention(
   layer: number,
   x: T,
   rec: Recorder | undefined,
+  causal = true,
 ): T {
   const { d_model: dModel, n_head: nHead, head_dim: headDim } = dims;
   const steps = x.shape[0];
@@ -126,9 +127,12 @@ export function causalSelfAttention(
   const outH: T[] = [];
   for (let h = 0; h < nHead; h++) {
     const scores = scale(matmul(qh[h], transpose2d(kh[h])), 1 / Math.sqrt(headDim)); // (T, T)
-    for (let i = 0; i < steps; i++) {
-      for (let j = i + 1; j < steps; j++) {
-        scores.data[i * steps + j] = -Infinity;
+    if (causal) {
+      // strict upper triangle -> -inf (a denoiser passes causal=false)
+      for (let i = 0; i < steps; i++) {
+        for (let j = i + 1; j < steps; j++) {
+          scores.data[i * steps + j] = -Infinity;
+        }
       }
     }
     scoresH.push(scores);

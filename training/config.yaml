@@ -42,6 +42,13 @@ kan:
   grid_min: -2.0
   grid_max: 2.0
 
+diffusion:
+  n_layer: 2
+  d_model: 48
+  n_head: 3
+  mlp_ratio: 4
+  mask_id: 11
+
 train:
   steps: 20000
   batch_size: 256

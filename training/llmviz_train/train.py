@@ -34,6 +34,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from llmviz_train.diffusion import Diffusion
 from llmviz_train.gpt import GPT
 from llmviz_train.kan import KAN
 from llmviz_train.mamba import Mamba
@@ -60,7 +61,9 @@ def build_model(arch: str, cfg: dict) -> nn.Module:
         return MoEModel(cfg["moe"], vocab_size=vocab_size)
     if arch == "kan":
         return KAN(cfg["kan"], vocab_size=vocab_size)
-    raise ValueError(f"unknown arch {arch!r} (expected mamba, gpt, rwkv, moe or kan)")
+    if arch == "diffusion":
+        return Diffusion(cfg["diffusion"], vocab_size=vocab_size)
+    raise ValueError(f"unknown arch {arch!r}")
 
 
 def atomic_save(obj: object, path: Path) -> None:

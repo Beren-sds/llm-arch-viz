@@ -96,7 +96,7 @@ def build_dims(arch: str, cfg: dict, state_dict: dict) -> dict:
         dims["max_seq_len"] = int(state_dict["pos_embedding.weight"].shape[0])
     elif arch == "rwkv":
         dims["d_ffn"] = dims["ffn_mult"] * dims["d_model"]
-    elif arch in ("moe", "kan"):
+    elif arch in ("moe", "kan", "diffusion"):
         dims["head_dim"] = dims["d_model"] // dims["n_head"]
         dims["max_seq_len"] = int(state_dict["pos_embedding.weight"].shape[0])
     else:
@@ -201,6 +201,42 @@ def select_golden_inputs(
     )
 
 
+def select_golden_inputs_diffusion(
+    model: torch.nn.Module, seed: int, mask_id: int
+) -> tuple[list[dict], list[dict], int]:
+    """Diffusion goldens: mask the answer tail, denoise once, keep candidates
+    the model recovers exactly. `tokens` stores the MASKED input; `answer`
+    the clean data tokens it must reconstruct at those positions.
+    """
+    gen = torch.Generator().manual_seed(seed + GOLDEN_SEED_OFFSET)
+    lo, hi = TASK.context_len + 1, TASK.context_len + 1 + TASK.n_data
+    inputs: list[dict] = []
+    activations: list[dict] = []
+    skipped = 0
+    model.eval()
+    with torch.no_grad():
+        for _ in range(MAX_GOLDEN_CANDIDATES):
+            x, _y, _m = make_batch(1, gen)
+            clean_answer = x[0, lo:hi].clone()
+            x_masked = x.clone()
+            x_masked[:, lo:hi] = mask_id
+            logits, acts = model(x_masked, record=True)
+            preds = logits[0, lo:hi].argmax(dim=-1)
+            if not torch.equal(preds, clean_answer):
+                skipped += 1
+                continue
+            inputs.append({"tokens": x_masked[0].tolist(), "answer": clean_answer.tolist()})
+            activations.append(
+                {name: {"shape": list(t.shape), "data": encode_data(t)} for name, t in acts.items()}
+            )
+            if len(inputs) == N_GOLDEN_INPUTS:
+                return inputs, activations, skipped
+    raise RuntimeError(
+        f"diffusion: could not find {N_GOLDEN_INPUTS} recoverable golden inputs in "
+        f"{MAX_GOLDEN_CANDIDATES} candidates (skipped {skipped})"
+    )
+
+
 # --- top-level export ----------------------------------------------------------
 
 
@@ -225,7 +261,12 @@ def export_arch(
     model = build_model(arch, cfg)
     model.load_state_dict(state_dict)
 
-    inputs, activations, skipped = select_golden_inputs(model, cfg["seed"])
+    if arch == "diffusion":
+        inputs, activations, skipped = select_golden_inputs_diffusion(
+            model, cfg["seed"], cfg["diffusion"]["mask_id"]
+        )
+    else:
+        inputs, activations, skipped = select_golden_inputs(model, cfg["seed"])
     table, blob = build_tensor_table(state_dict)
 
     manifest = {
