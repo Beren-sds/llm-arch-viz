@@ -33,7 +33,7 @@ import { getTensor, type Manifest } from "../compute/loader";
 import { mambaDimsFrom, mambaForward } from "../compute/mamba";
 import { MapRecorder } from "../compute/recorder";
 import { TensorView } from "../engine/tensorView";
-import { createFlowSegment, disposeFlow } from "../engine/flow";
+import { createEdge, createFlowSegment, disposeFlow } from "../engine/flow";
 import {
   createDimBracket,
   createTensorLabel,
@@ -418,6 +418,38 @@ export function buildMambaScene(deps: MambaSceneDeps): MambaScene {
     root.add(seg);
     flowMeshes.push(seg);
   }
+
+  // -- computation-graph wiring + operation labels -------------------------------
+  // Faint edges from each weight to the activation it produces, plus a small
+  // operation annotation at the edge midpoint — the scene reads as a wired
+  // graph, not isolated grids. Edges sit behind the cells (renderOrder −2).
+  const wire = (fromName: string, toName: string, op?: string): void => {
+    const a = rects.get(fromName);
+    const b = rects.get(toName);
+    if (!a || !b) return;
+    const ay = (a.top + a.bottom) / 2;
+    const by = (b.top + b.bottom) / 2;
+    const [ax, bx] = a.right <= b.left ? [a.right, b.left] : [a.left, b.right];
+    const e = createEdge([ax, ay, 0], [bx, by, 0]);
+    root.add(e);
+    flowMeshes.push(e);
+    if (op) addLabel(op, (ax + bx) / 2, (ay + by) / 2 + 1.7, { size: 1.7, color: "#8a96b0" });
+  };
+
+  wire("embedding.weight", "embed.out", "lookup");
+  for (let i = 0; i < dims.n_layer; i++) {
+    const L = (s: string): string => `layer${i}.${s}`;
+    const B = (s: string): string => `blocks.${i}.${s}`;
+    wire(`norms.${i}.weight`, L("norm.out"), "RMSNorm");
+    wire(B("in_proj.weight"), L("in_proj.out"), "× Wᵀ");
+    wire(B("conv1d.weight"), L("conv.out"), "conv");
+    wire(B("x_proj.weight"), L("x_proj.out"), "× Wᵀ");
+    wire(B("dt_proj.weight"), L("delta.out"), "softplus");
+    wire(B("A_log"), L("ssm.out"), "scan");
+    wire(B("out_proj.weight"), L("out_proj.out"), "× Wᵀ");
+  }
+  wire("final_norm.weight", "final_norm.out", "RMSNorm");
+  wire("lm_head.weight", "head.logits", "× Wᵀ");
 
   // -- anchors -------------------------------------------------------------------
 

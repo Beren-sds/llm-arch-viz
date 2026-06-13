@@ -23,7 +23,7 @@ import { getTensor, type Manifest } from "../compute/loader";
 import { gptDimsFrom, gptForward } from "../compute/gpt";
 import { MapRecorder } from "../compute/recorder";
 import { TensorView } from "../engine/tensorView";
-import { createFlowSegment, disposeFlow } from "../engine/flow";
+import { createEdge, createFlowSegment, disposeFlow } from "../engine/flow";
 import {
   createDimBracket,
   createTensorLabel,
@@ -334,6 +334,41 @@ export function buildGptScene(deps: GptSceneDeps): SceneController {
     root.add(seg);
     flowMeshes.push(seg);
   }
+
+  // -- computation-graph wiring + operation labels ----------------------------
+  // Faint edges weight→output and activation→activation, with a small op
+  // annotation at each midpoint, so the attention/MLP computation reads as a
+  // wired graph rather than isolated grids.
+  const wire = (fromName: string, toName: string, op?: string): void => {
+    const a = rects.get(fromName);
+    const b = rects.get(toName);
+    if (!a || !b) return;
+    const ay = (a.top + a.bottom) / 2;
+    const by = (b.top + b.bottom) / 2;
+    const [ax, bx] = a.right <= b.left ? [a.right, b.left] : [a.left, b.right];
+    const e = createEdge([ax, ay, 0], [bx, by, 0]);
+    root.add(e);
+    flowMeshes.push(e);
+    if (op) addLabel(op, (ax + bx) / 2, (ay + by) / 2 + 1.7, { size: 1.7, color: "#8a96b0" });
+  };
+
+  wire("tok_embedding.weight", "embed.out", "lookup");
+  wire("pos_embedding.weight", "embed.out", "+ pos");
+  for (let i = 0; i < dims.n_layer; i++) {
+    const L = (s: string): string => `layer${i}.${s}`;
+    wire(`ln1s.${i}.weight`, L("ln1.out"), "LayerNorm");
+    wire(`attns.${i}.qkv_proj.weight`, L("attn.q"), "Q,K,V = ·Wᵀ");
+    wire(L("attn.q"), L("attn.scores"), "QKᵀ/√d");
+    wire(L("attn.scores"), L("attn.weights"), "softmax");
+    wire(L("attn.weights"), L("attn.out"), "·V");
+    wire(`attns.${i}.out_proj.weight`, L("attn.out"), "× Wᵀ");
+    wire(`ln2s.${i}.weight`, L("ln2.out"), "LayerNorm");
+    wire(`mlps.${i}.fc.weight`, L("mlp.fc"), "× Wᵀ");
+    wire(L("mlp.fc"), L("mlp.act"), "GELU");
+    wire(`mlps.${i}.proj.weight`, L("mlp.proj"), "× Wᵀ");
+  }
+  wire("ln_f.weight", "final_norm.out", "LayerNorm");
+  wire("lm_head.weight", "head.logits", "× Wᵀ");
 
   // -- anchors ----------------------------------------------------------------
 
