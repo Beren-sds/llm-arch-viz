@@ -25,6 +25,18 @@ export class OrbitControls {
     // sits ~950 out, so the zoom-out clamp must stay beyond that (camera
     // far plane is 2000 in createSceneShell).
     this.inner.maxDistance = 1500;
+    // Idle showcase orbit (the page toggles it on after inactivity); slow so
+    // it reads as a gentle drift around the focused target, not a spin.
+    this.inner.autoRotateSpeed = 0.45;
+  }
+
+  /** Gentle orbit around the target; the page enables it only when idle. */
+  set autoRotate(on: boolean) {
+    this.inner.autoRotate = on;
+  }
+
+  get autoRotate(): boolean {
+    return this.inner.autoRotate;
   }
 
   /** The point the camera orbits around; mutate or copy into it, then update(). */

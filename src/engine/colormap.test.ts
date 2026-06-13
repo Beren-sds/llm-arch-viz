@@ -6,6 +6,7 @@ import {
   NEG_COLOR,
   MID_COLOR,
   POS_COLOR,
+  CONTRAST,
   tensorScale,
   valueColor,
 } from "./colormap";
@@ -23,18 +24,20 @@ describe("valueColor", () => {
     expect(rgb(2, 2)).toEqual([POS_COLOR.r, POS_COLOR.g, POS_COLOR.b]);
   });
 
-  it("interpolates linearly at the positive midpoint (t = 0.5 toward POS)", () => {
+  it("applies the contrast curve at the positive midpoint (t = 0.5 toward POS)", () => {
+    const a = Math.pow(0.5, CONTRAST);
     const [r, g, b] = rgb(1, 2);
-    expect(r).toBeCloseTo(0.5 * MID_COLOR.r + 0.5 * POS_COLOR.r, 10);
-    expect(g).toBeCloseTo(0.5 * MID_COLOR.g + 0.5 * POS_COLOR.g, 10);
-    expect(b).toBeCloseTo(0.5 * MID_COLOR.b + 0.5 * POS_COLOR.b, 10);
+    expect(r).toBeCloseTo((1 - a) * MID_COLOR.r + a * POS_COLOR.r, 10);
+    expect(g).toBeCloseTo((1 - a) * MID_COLOR.g + a * POS_COLOR.g, 10);
+    expect(b).toBeCloseTo((1 - a) * MID_COLOR.b + a * POS_COLOR.b, 10);
   });
 
-  it("interpolates linearly at the negative midpoint (t = 0.5 toward NEG)", () => {
+  it("applies the contrast curve at the negative midpoint (t = 0.5 toward NEG)", () => {
+    const a = Math.pow(0.5, CONTRAST);
     const [r, g, b] = rgb(-1, 2);
-    expect(r).toBeCloseTo(0.5 * MID_COLOR.r + 0.5 * NEG_COLOR.r, 10);
-    expect(g).toBeCloseTo(0.5 * MID_COLOR.g + 0.5 * NEG_COLOR.g, 10);
-    expect(b).toBeCloseTo(0.5 * MID_COLOR.b + 0.5 * NEG_COLOR.b, 10);
+    expect(r).toBeCloseTo((1 - a) * MID_COLOR.r + a * NEG_COLOR.r, 10);
+    expect(g).toBeCloseTo((1 - a) * MID_COLOR.g + a * NEG_COLOR.g, 10);
+    expect(b).toBeCloseTo((1 - a) * MID_COLOR.b + a * NEG_COLOR.b, 10);
   });
 
   it("clamps values beyond +/- scale to the endpoint colors", () => {

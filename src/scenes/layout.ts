@@ -9,8 +9,8 @@ import type { CameraKeyframe } from "../engine/cameraTour";
 
 /** Cube edge length (world units). */
 export const CELL = 1;
-/** Gap between adjacent cells. */
-export const GAP = 0.25;
+/** Gap between adjacent cells (a clear gutter reads as a grid, not a texture). */
+export const GAP = 0.34;
 /** Center-to-center spacing of adjacent cells. */
 export const PITCH = CELL + GAP;
 

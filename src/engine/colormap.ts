@@ -26,6 +26,15 @@ export const MID_COLOR = { r: 0.81, g: 0.82, b: 0.86 } as const;
 /** v = +scale: warm coral. */
 export const POS_COLOR = { r: 0.88, g: 0.46, b: 0.38 } as const;
 
+/**
+ * Contrast curve exponent applied to |t| before the lerp (< 1 lifts
+ * mid-magnitude cells toward their hue). Endpoints stay exact (0^γ=0,
+ * 1^γ=1), so the colour at -scale/0/+scale is unchanged — only the spread
+ * between them is enriched, so grids read as structure rather than washing
+ * to the near-neutral zero colour. The exact value is always in the tooltip.
+ */
+export const CONTRAST = 0.7;
+
 /** -Infinity (masked cells, e.g. GPT attention above the diagonal). */
 export const MASKED_COLOR: RGB = { r: 0.16, g: 0.18, b: 0.22 };
 /** +Infinity / NaN — loud error signal, should never appear in healthy runs. */
@@ -58,11 +67,12 @@ export function valueColor(v: number, scale: number, out: RGB): RGB {
   else if (t < -1) t = -1;
   const end = t < 0 ? NEG_COLOR : POS_COLOR;
   const a = t < 0 ? -t : t;
-  // Two-product lerp form is exact at a=0 and a=1 (hits MID/end precisely).
-  const ia = 1 - a;
-  out.r = MID_COLOR.r * ia + end.r * a;
-  out.g = MID_COLOR.g * ia + end.g * a;
-  out.b = MID_COLOR.b * ia + end.b * a;
+  // Contrast-curved blend; exact at a=0 and a=1 (hits MID/end precisely).
+  const ca = a === 0 || a === 1 ? a : Math.pow(a, CONTRAST);
+  const ia = 1 - ca;
+  out.r = MID_COLOR.r * ia + end.r * ca;
+  out.g = MID_COLOR.g * ia + end.g * ca;
+  out.b = MID_COLOR.b * ia + end.b * ca;
   return out;
 }
 

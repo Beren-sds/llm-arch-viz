@@ -23,6 +23,7 @@ import { getTensor, type Manifest } from "../compute/loader";
 import { gptDimsFrom, gptForward } from "../compute/gpt";
 import { MapRecorder } from "../compute/recorder";
 import { TensorView } from "../engine/tensorView";
+import { createFlowSegment, disposeFlow } from "../engine/flow";
 import {
   createDimBracket,
   createTensorLabel,
@@ -321,6 +322,19 @@ export function buildGptScene(deps: GptSceneDeps): SceneController {
   const logitsRect = place("head.logits", [SEQ, dims.vocab_size], { centerX: 0, topY: y });
   placeW("lm_head.weight", { rightX: logitsRect.left - FLANK_MARGIN, topY: logitsRect.top });
 
+  // -- residual-stream spine --------------------------------------------------
+  // Glowing connectors threading the centred .out tensors top→bottom, in the
+  // vertical gutters so they never occlude a cell — the residual stream.
+  const flowMeshes: THREE.Mesh[] = [];
+  const spineCol = [...rects.values()]
+    .filter((rc) => Math.abs((rc.left + rc.right) / 2) < CELL)
+    .sort((p, q) => q.top - p.top);
+  for (let i = 1; i < spineCol.length; i++) {
+    const seg = createFlowSegment([0, spineCol[i - 1].bottom, 0], [0, spineCol[i].top, 0]);
+    root.add(seg);
+    flowMeshes.push(seg);
+  }
+
   // -- anchors ----------------------------------------------------------------
 
   const r = (name: string): Rect => {
@@ -426,6 +440,7 @@ export function buildGptScene(deps: GptSceneDeps): SceneController {
       view.dispose();
     }
     for (const obj of labelObjects) disposeLabel(obj);
+    for (const m of flowMeshes) disposeFlow(m);
     deps.scene.remove(root);
   }
 

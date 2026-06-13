@@ -33,6 +33,7 @@ import { getTensor, type Manifest } from "../compute/loader";
 import { mambaDimsFrom, mambaForward } from "../compute/mamba";
 import { MapRecorder } from "../compute/recorder";
 import { TensorView } from "../engine/tensorView";
+import { createFlowSegment, disposeFlow } from "../engine/flow";
 import {
   createDimBracket,
   createTensorLabel,
@@ -404,6 +405,20 @@ export function buildMambaScene(deps: MambaSceneDeps): MambaScene {
     topY: logitsRect.top,
   });
 
+  // -- residual-stream spine -----------------------------------------------------
+  // Glowing connectors threading the centred .out tensors top→bottom, sitting
+  // purely in the vertical gutters so they never occlude a cell. Reads as the
+  // residual stream flowing down the scene.
+  const flowMeshes: THREE.Mesh[] = [];
+  const spineCol = [...rects.values()]
+    .filter((rc) => Math.abs((rc.left + rc.right) / 2) < CELL)
+    .sort((p, q) => q.top - p.top);
+  for (let i = 1; i < spineCol.length; i++) {
+    const seg = createFlowSegment([0, spineCol[i - 1].bottom, 0], [0, spineCol[i].top, 0]);
+    root.add(seg);
+    flowMeshes.push(seg);
+  }
+
   // -- anchors -------------------------------------------------------------------
 
   const r = (name: string): Rect => {
@@ -593,6 +608,7 @@ export function buildMambaScene(deps: MambaSceneDeps): MambaScene {
       view.dispose();
     }
     for (const obj of labelObjects) disposeLabel(obj);
+    for (const m of flowMeshes) disposeFlow(m);
     deps.scene.remove(root);
   }
 

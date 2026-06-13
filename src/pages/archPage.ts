@@ -79,6 +79,9 @@ function titleKeyOf(ch: Chapter): string {
   return ch.narrationKey.replace(/\.body$/, ".title");
 }
 
+/** Quiet time before the camera starts its gentle showcase orbit. */
+const IDLE_ORBIT_MS = 6000;
+
 export function createArchPage(deps: ArchPageDeps): ArchPage {
   const { container, i18n, tokens } = deps;
 
@@ -113,9 +116,13 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
     },
     durationMs: 1000,
   });
+  // Idle-orbit clock: any user grab (or chapter change) resets it; the render
+  // loop turns on auto-rotate once the view has been quiet long enough.
+  let lastUserMs = performance.now();
   controls.onStart(() => {
     tour.cancel(); // a user grab interrupts an in-flight fly-to
     picker.enabled = true;
+    lastUserMs = performance.now();
   });
 
   const timeline = new TimelinePlayer(scene.binding);
@@ -198,6 +205,7 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
     scene.setTokens(tokens);
 
     current = clamped;
+    lastUserMs = performance.now(); // don't auto-orbit straight after a nav
     const ch = chapters.get(clamped);
 
     // Camera: gate hover during the flight, restore on arrival.
@@ -270,6 +278,7 @@ export function createArchPage(deps: ArchPageDeps): ArchPage {
     tour.update(now);
     if (tour.state === "idle") {
       // OrbitControls drives; report the live view so the next fly-to starts here.
+      controls.autoRotate = now - lastUserMs > IDLE_ORBIT_MS;
       controls.update();
       tour.syncCurrent(
         [shell.camera.position.x, shell.camera.position.y, shell.camera.position.z],
