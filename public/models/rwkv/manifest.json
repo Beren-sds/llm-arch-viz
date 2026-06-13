@@ -1,0 +1,356 @@
+{
+  "arch": "rwkv",
+  "offset_unit": "float32",
+  "dims": {
+    "n_layer": 2,
+    "d_model": 48,
+    "ffn_mult": 4,
+    "vocab_size": 16,
+    "d_ffn": 192
+  },
+  "checkpoint": {
+    "run_dir": "outputs/rwkv/20260613T112851Z-b61fa01",
+    "step": 1250,
+    "val_exact": 0.9970703125,
+    "golden_seed": 1131,
+    "golden_candidates_skipped": 0
+  },
+  "tensors": [
+    {
+      "name": "att.0.key.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 0,
+      "length": 2304
+    },
+    {
+      "name": "att.0.output.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 2304,
+      "length": 2304
+    },
+    {
+      "name": "att.0.receptance.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 4608,
+      "length": 2304
+    },
+    {
+      "name": "att.0.time_decay",
+      "shape": [
+        48
+      ],
+      "offset": 6912,
+      "length": 48
+    },
+    {
+      "name": "att.0.time_first",
+      "shape": [
+        48
+      ],
+      "offset": 6960,
+      "length": 48
+    },
+    {
+      "name": "att.0.time_mix_k",
+      "shape": [
+        48
+      ],
+      "offset": 7008,
+      "length": 48
+    },
+    {
+      "name": "att.0.time_mix_r",
+      "shape": [
+        48
+      ],
+      "offset": 7056,
+      "length": 48
+    },
+    {
+      "name": "att.0.time_mix_v",
+      "shape": [
+        48
+      ],
+      "offset": 7104,
+      "length": 48
+    },
+    {
+      "name": "att.0.value.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 7152,
+      "length": 2304
+    },
+    {
+      "name": "att.1.key.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 9456,
+      "length": 2304
+    },
+    {
+      "name": "att.1.output.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 11760,
+      "length": 2304
+    },
+    {
+      "name": "att.1.receptance.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 14064,
+      "length": 2304
+    },
+    {
+      "name": "att.1.time_decay",
+      "shape": [
+        48
+      ],
+      "offset": 16368,
+      "length": 48
+    },
+    {
+      "name": "att.1.time_first",
+      "shape": [
+        48
+      ],
+      "offset": 16416,
+      "length": 48
+    },
+    {
+      "name": "att.1.time_mix_k",
+      "shape": [
+        48
+      ],
+      "offset": 16464,
+      "length": 48
+    },
+    {
+      "name": "att.1.time_mix_r",
+      "shape": [
+        48
+      ],
+      "offset": 16512,
+      "length": 48
+    },
+    {
+      "name": "att.1.time_mix_v",
+      "shape": [
+        48
+      ],
+      "offset": 16560,
+      "length": 48
+    },
+    {
+      "name": "att.1.value.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 16608,
+      "length": 2304
+    },
+    {
+      "name": "embedding.weight",
+      "shape": [
+        16,
+        48
+      ],
+      "offset": 18912,
+      "length": 768
+    },
+    {
+      "name": "ffn.0.key.weight",
+      "shape": [
+        192,
+        48
+      ],
+      "offset": 19680,
+      "length": 9216
+    },
+    {
+      "name": "ffn.0.receptance.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 28896,
+      "length": 2304
+    },
+    {
+      "name": "ffn.0.time_mix_k",
+      "shape": [
+        48
+      ],
+      "offset": 31200,
+      "length": 48
+    },
+    {
+      "name": "ffn.0.time_mix_r",
+      "shape": [
+        48
+      ],
+      "offset": 31248,
+      "length": 48
+    },
+    {
+      "name": "ffn.0.value.weight",
+      "shape": [
+        48,
+        192
+      ],
+      "offset": 31296,
+      "length": 9216
+    },
+    {
+      "name": "ffn.1.key.weight",
+      "shape": [
+        192,
+        48
+      ],
+      "offset": 40512,
+      "length": 9216
+    },
+    {
+      "name": "ffn.1.receptance.weight",
+      "shape": [
+        48,
+        48
+      ],
+      "offset": 49728,
+      "length": 2304
+    },
+    {
+      "name": "ffn.1.time_mix_k",
+      "shape": [
+        48
+      ],
+      "offset": 52032,
+      "length": 48
+    },
+    {
+      "name": "ffn.1.time_mix_r",
+      "shape": [
+        48
+      ],
+      "offset": 52080,
+      "length": 48
+    },
+    {
+      "name": "ffn.1.value.weight",
+      "shape": [
+        48,
+        192
+      ],
+      "offset": 52128,
+      "length": 9216
+    },
+    {
+      "name": "head.weight",
+      "shape": [
+        16,
+        48
+      ],
+      "offset": 61344,
+      "length": 768
+    },
+    {
+      "name": "ln1.0.bias",
+      "shape": [
+        48
+      ],
+      "offset": 62112,
+      "length": 48
+    },
+    {
+      "name": "ln1.0.weight",
+      "shape": [
+        48
+      ],
+      "offset": 62160,
+      "length": 48
+    },
+    {
+      "name": "ln1.1.bias",
+      "shape": [
+        48
+      ],
+      "offset": 62208,
+      "length": 48
+    },
+    {
+      "name": "ln1.1.weight",
+      "shape": [
+        48
+      ],
+      "offset": 62256,
+      "length": 48
+    },
+    {
+      "name": "ln2.0.bias",
+      "shape": [
+        48
+      ],
+      "offset": 62304,
+      "length": 48
+    },
+    {
+      "name": "ln2.0.weight",
+      "shape": [
+        48
+      ],
+      "offset": 62352,
+      "length": 48
+    },
+    {
+      "name": "ln2.1.bias",
+      "shape": [
+        48
+      ],
+      "offset": 62400,
+      "length": 48
+    },
+    {
+      "name": "ln2.1.weight",
+      "shape": [
+        48
+      ],
+      "offset": 62448,
+      "length": 48
+    },
+    {
+      "name": "ln_out.bias",
+      "shape": [
+        48
+      ],
+      "offset": 62496,
+      "length": 48
+    },
+    {
+      "name": "ln_out.weight",
+      "shape": [
+        48
+      ],
+      "offset": 62544,
+      "length": 48
+    }
+  ]
+}

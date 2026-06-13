@@ -12,5 +12,12 @@
     "git_short": "8c7c291",
     "run_dir": "outputs/mamba/20260612T061236Z-8c7c291",
     "step": 750
+  },
+  "rwkv": {
+    "best_val_exact": 0.9970703125,
+    "finished_utc": "2026-06-13T11:29:35Z",
+    "git_short": "b61fa01",
+    "run_dir": "outputs/rwkv/20260613T112851Z-b61fa01",
+    "step": 1250
   }
 }

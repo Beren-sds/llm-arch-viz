@@ -51,7 +51,7 @@ def update_runs_json(arch: str, entry: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--arch", required=True, choices=["mamba", "gpt"])
+    parser.add_argument("--arch", required=True, choices=["mamba", "gpt", "rwkv"])
     args = parser.parse_args()
 
     cfg = load_config()

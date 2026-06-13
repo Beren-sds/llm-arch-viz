@@ -23,12 +23,12 @@ from llmviz_train.export import DEFAULT_GOLDENS_ROOT, DEFAULT_MODELS_ROOT, expor
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--arch", choices=["mamba", "gpt", "all"], default="all")
+    parser.add_argument("--arch", choices=["mamba", "gpt", "rwkv", "all"], default="all")
     parser.add_argument("--models-root", type=Path, default=DEFAULT_MODELS_ROOT)
     parser.add_argument("--goldens-root", type=Path, default=DEFAULT_GOLDENS_ROOT)
     args = parser.parse_args()
 
-    archs = ["mamba", "gpt"] if args.arch == "all" else [args.arch]
+    archs = ["mamba", "gpt", "rwkv"] if args.arch == "all" else [args.arch]
     for arch in archs:
         summary = export_arch(arch, args.models_root / arch, args.goldens_root / arch)
         print(json.dumps(summary, indent=2))

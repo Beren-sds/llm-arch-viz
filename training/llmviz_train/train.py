@@ -36,6 +36,7 @@ from torch import nn
 
 from llmviz_train.gpt import GPT
 from llmviz_train.mamba import Mamba
+from llmviz_train.rwkv import RWKV
 from llmviz_train.seed import seed_all
 from llmviz_train.task import make_batch
 
@@ -51,7 +52,9 @@ def build_model(arch: str, cfg: dict) -> nn.Module:
         return Mamba(cfg["mamba"], vocab_size=vocab_size)
     if arch == "gpt":
         return GPT(cfg["gpt"], vocab_size=vocab_size)
-    raise ValueError(f"unknown arch {arch!r} (expected 'mamba' or 'gpt')")
+    if arch == "rwkv":
+        return RWKV(cfg["rwkv"], vocab_size=vocab_size)
+    raise ValueError(f"unknown arch {arch!r} (expected 'mamba', 'gpt' or 'rwkv')")
 
 
 def atomic_save(obj: object, path: Path) -> None:
